@@ -158,6 +158,7 @@
 </div>
 {% endif %}
 
+<script>setInterval(()=>fetch('/health'),240000);</script>
 <style>
 .result-pick .pick-label { opacity: 0.2; transition: opacity 0.15s; }
 .result-pick input[type="radio"]:checked ~ .pick-label { opacity: 1; }
