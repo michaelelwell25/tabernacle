@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join {{ tournament.name }} - Tabernacle</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <span class="navbar-brand"><span class="brand-icon">&#9876;</span> Tabernacle</span>
+    </div>
+  </nav>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <div style="text-align:center;margin-bottom:2rem;">
+      <h1 style="margin-bottom:0.25rem;">{{ tournament.name }}</h1>
+      <div class="text-secondary">
+        {{ tournament.date.strftime('%B %d, %Y') if tournament.date else '' }}
+        <span>&middot;</span>
+        {{ player_count }} player{{ 's' if player_count != 1 }} registered
+      </div>
+    </div>
+
+    {% if can_register %}
+    <div class="card form-card" style="max-width:28rem;margin:0 auto 2rem;">
+      <h2 style="font-size:1.1rem;margin-bottom:1rem;">Register</h2>
+      <form method="POST" action="{{ url_for('player.join_tournament', tournament_id=tournament.id) }}">
+        <div class="form-group">
+          <label class="form-label" for="name">Your Name</label>
+          <input type="text" id="name" name="name" class="form-control" placeholder="First Last" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="decklist_url">Decklist URL</label>
+          <div style="display:flex;gap:0.5rem;">
+            <input type="url" id="decklist_url" name="decklist_url" class="form-control" placeholder="https://moxfield.com/decks/..." style="flex:1;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="fetchDeck()" id="fetchBtn">Fetch</button>
+          </div>
+          <div id="fetchStatus" style="margin-top:0.35rem;font-size:0.8rem;"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="commander">Commander</label>
+          <input type="text" id="commander" name="commander" class="form-control" placeholder="Auto-filled or type manually">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">Join Tournament</button>
+      </form>
+    </div>
+    {% else %}
+    <div class="card" style="max-width:28rem;margin:0 auto 2rem;text-align:center;padding:2rem;">
+      {% if tournament.status == 'completed' %}
+      <h3>Tournament Complete</h3>
+      <p class="text-secondary">This tournament has ended.</p>
+      {% else %}
+      <h3>Registration Closed</h3>
+      <p class="text-secondary">This tournament is in progress. Contact the TO if you need to register late.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Current Pairings Lookup -->
+    {% if tournament.status in ('active', 'playoffs') and tournament.current_round > 0 %}
+    <div class="card" style="max-width:28rem;margin:0 auto 2rem;padding:1.25rem;">
+      <h2 style="font-size:1.1rem;margin-bottom:0.75rem;">Find My Table</h2>
+      <div style="display:flex;gap:0.5rem;">
+        <input type="text" id="seatSearch" class="form-control" placeholder="Type your name..." oninput="findSeat()" style="flex:1;">
+      </div>
+      <div id="seatResult" style="margin-top:0.75rem;"></div>
+    </div>
+    {% endif %}
+
+    <!-- Player List -->
+    {% if players %}
+    <div style="max-width:32rem;margin:0 auto;">
+      <div class="section-title">Registered Players</div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Commander</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in players %}
+            <tr>
+              <td class="text-muted">{{ loop.index }}</td>
+              <td>{{ p.name }}</td>
+              <td class="text-secondary">{{ p.commander or '—' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+  </main>
+
+  <footer class="footer">
+    <p>Tabernacle — cEDH Tournament Manager</p>
+  </footer>
+
+<script>
+async function fetchDeck() {
+  const url = document.getElementById('decklist_url').value.trim();
+  const status = document.getElementById('fetchStatus');
+  const btn = document.getElementById('fetchBtn');
+
+  if (!url) { status.innerHTML = '<span style="color:var(--error)">Enter a URL first</span>'; return; }
+
+  const match = url.match(/moxfield\.com\/decks\/([A-Za-z0-9_-]+)/);
+  if (!match) { status.innerHTML = '<span style="color:var(--error)">Not a valid Moxfield URL</span>'; return; }
+
+  btn.disabled = true;
+  status.innerHTML = '<span style="color:var(--text-muted)">Fetching...</span>';
+
+  try {
+    const resp = await fetch('https://api2.moxfield.com/v3/decks/all/' + match[1], {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!resp.ok) throw new Error('API returned ' + resp.status);
+    const data = await resp.json();
+
+    const cmds = data.boards?.commanders?.cards || {};
+    const names = Object.values(cmds).map(v => v.card?.name).filter(Boolean);
+
+    if (names.length > 0) {
+      document.getElementById('commander').value = names.join(' / ');
+      status.innerHTML = '<span style="color:var(--success)">Found: ' + names.join(' / ') + '</span>';
+    } else {
+      status.innerHTML = '<span style="color:var(--warning)">No commander found in deck</span>';
+    }
+  } catch (e) {
+    status.innerHTML = '<span style="color:var(--warning)">Could not fetch — enter commander manually</span>';
+  }
+  btn.disabled = false;
+}
+
+document.getElementById('decklist_url')?.addEventListener('paste', function() {
+  setTimeout(fetchDeck, 100);
+});
+
+const seatData = {{ seat_data|tojson }};
+function findSeat() {
+  const q = document.getElementById('seatSearch').value.trim().toLowerCase();
+  const result = document.getElementById('seatResult');
+  if (!q || q.length < 2) { result.innerHTML = ''; return; }
+
+  const matches = seatData.filter(s => s.name.toLowerCase().includes(q));
+  if (matches.length === 0) {
+    result.innerHTML = '<span class="text-secondary">No match found</span>';
+  } else if (matches.length > 3) {
+    result.innerHTML = '<span class="text-secondary">Multiple matches — keep typing...</span>';
+  } else {
+    result.innerHTML = matches.map(m => {
+      if (m.is_bye) {
+        return '<div class="card" style="padding:0.75rem;margin-bottom:0.5rem;background:var(--bg-secondary);">' +
+          '<strong>' + m.name + '</strong><br>' +
+          '<span class="badge badge-gold">BYE this round</span></div>';
+      }
+      return '<div class="card" style="padding:0.75rem;margin-bottom:0.5rem;background:var(--bg-secondary);">' +
+        '<strong>' + m.name + '</strong><br>' +
+        '<span style="font-size:1.5rem;font-weight:700;color:var(--accent);">Table ' + m.table + '</span>' +
+        '<span class="text-secondary" style="margin-left:0.5rem;">Seat ' + m.seat + '</span><br>' +
+        '<span class="text-secondary" style="font-size:0.85rem;">vs ' + m.opponents.join(', ') + '</span></div>';
+    }).join('');
+  }
+}
+</script>
+</body>
+</html>

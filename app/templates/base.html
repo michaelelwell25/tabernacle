@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Tabernacle{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="{{ url_for('tournament.list_tournaments') }}" class="navbar-brand">
+        <span class="brand-icon">&#9876;</span> Tabernacle
+      </a>
+      <button class="nav-toggle" onclick="document.querySelector('.navbar-links').classList.toggle('open')" aria-label="Menu">&#9776;</button>
+      <ul class="navbar-links">
+        <li><a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a></li>
+        {% if tournament is defined and tournament %}
+        <li><a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}">Dashboard</a></li>
+        <li><a href="{{ url_for('player.list_players', tournament_id=tournament.id) }}">Players</a></li>
+        <li><a href="{{ url_for('round.list_rounds', tournament_id=tournament.id) }}">Rounds</a></li>
+        <li><a href="{{ url_for('standings.view_standings', tournament_id=tournament.id) }}">Standings</a></li>
+        {% endif %}
+      </ul>
+    </div>
+  </nav>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages">
+      {% for category, message in messages %}
+      <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <p>Tabernacle &mdash; cEDH Tournament Manager</p>
+  </footer>
+
+</body>
+</html>

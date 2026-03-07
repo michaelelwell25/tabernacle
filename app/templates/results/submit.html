@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Submit Results - Round {{ round.round_number }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}">{{ tournament.name }}</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('round.view_round', round_id=round.id) }}">Round {{ round.round_number }}</a>
+  <span class="sep"></span>
+  <span>Results</span>
+</div>
+
+<div class="page-header">
+  <h1>Submit Results &mdash; Round {{ round.round_number }}</h1>
+</div>
+
+<form method="POST" action="{{ url_for('results.submit_results', round_id=round.id) }}" id="resultsForm">
+
+  {% for pod in pods %}
+  <div class="pod-card result-pod {{ 'pod-bye' if pod.is_bye }}" style="margin-bottom:1.5rem;">
+    <div class="pod-header">
+      <span>Table {{ pod.table_number }}</span>
+      {% if pod.is_bye %}
+      <span class="badge badge-gold">BYE</span>
+      {% endif %}
+    </div>
+    <div class="pod-body" style="padding:1rem 1.15rem;">
+      {% if pod.is_bye %}
+      {% for pp in pod.assignments %}
+      <div class="result-player">
+        <span class="player-name-label">{{ pp.player.name }}</span>
+        <span class="badge badge-gold">BYE &mdash; +{{ tournament.bye_points }} pts</span>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="result-options" style="display:flex;flex-direction:column;gap:0.5rem;">
+        {% for pp in pod.assignments %}
+        <label class="result-option" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;border-radius:var(--radius);cursor:pointer;transition:background 0.15s;">
+          <input type="radio" name="result_{{ pod.id }}" value="{{ pp.player_id }}" style="accent-color:var(--accent);"
+            {{ 'checked' if pp.placement == 1 }} required>
+          <span style="flex:1;font-weight:500;">{{ pp.player.name }}</span>
+          <span class="badge badge-green" style="font-size:0.7rem;">WINNER</span>
+        </label>
+        {% endfor %}
+        <label class="result-option" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;border-radius:var(--radius);cursor:pointer;transition:background 0.15s;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.75rem;">
+          <input type="radio" name="result_{{ pod.id }}" value="draw" style="accent-color:var(--warning);"
+            {{ 'checked' if pod.status == "completed" and not pod.assignments.filter_by(placement=1).first() }}>
+          <span style="flex:1;font-weight:500;color:var(--warning);">Draw</span>
+          <span class="badge badge-gray" style="font-size:0.7rem;">{{ tournament.draw_points }} pts each</span>
+        </label>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="btn-group mt-2">
+    <button type="submit" class="btn btn-primary btn-lg">Submit All Results</button>
+    <a href="{{ url_for('round.view_round', round_id=round.id) }}" class="btn btn-outline">Cancel</a>
+  </div>
+</form>
+
+<style>
+.result-option:hover { background: var(--bg-hover); }
+.result-option input[type="radio"]:checked ~ .badge-green { opacity: 1; }
+.result-option .badge-green { opacity: 0.3; transition: opacity 0.15s; }
+.result-option input[type="radio"]:checked ~ span.badge-green { opacity: 1; }
+</style>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Players - {{ tournament.name }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}">{{ tournament.name }}</a>
+  <span class="sep"></span>
+  <span>Players</span>
+</div>
+
+<div class="page-header">
+  <h1>Players <span class="text-secondary" style="font-weight:400;font-size:1rem;">({{ players|length }})</span></h1>
+  {% if tournament.status != 'completed' %}
+  <a href="{{ url_for('player.register_player', tournament_id=tournament.id) }}" class="btn btn-primary">+ Register Player</a>
+  {% endif %}
+</div>
+
+<!-- Search -->
+{% if players|length > 8 %}
+<div style="margin-bottom:1rem;">
+  <input type="text" id="playerSearch" class="form-control" placeholder="Search players or commanders..." style="max-width:20rem;" oninput="filterPlayers()">
+</div>
+{% endif %}
+
+{% if players %}
+<div class="table-wrap">
+  <table class="table" id="playerTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Commander</th>
+        <th>Status</th>
+        <th class="text-center">Points</th>
+        <th class="text-center">Matches</th>
+        {% if tournament.status != 'completed' %}
+        <th class="text-right">Actions</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in players %}
+      <tr class="{{ 'player-dropped' if p.dropped }} player-row">
+        <td><span class="player-name">{{ p.name }}</span></td>
+        <td>
+          {% if tournament.status != 'completed' %}
+          <form method="POST" action="{{ url_for('player.edit_player', player_id=p.id) }}" class="inline-form" style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+            <input type="text" name="commander" value="{{ p.commander or '' }}" class="form-control" style="padding:0.25rem 0.5rem;font-size:0.85rem;width:9rem;" placeholder="—">
+            <input type="url" name="decklist_url" value="{{ p.decklist_url or '' }}" class="form-control" style="padding:0.25rem 0.5rem;font-size:0.75rem;width:7rem;" placeholder="Moxfield URL">
+            <button type="submit" class="btn btn-outline btn-sm" style="padding:0.15rem 0.5rem;font-size:0.75rem;">Save</button>
+          </form>
+          {% else %}
+          <span>
+            {{ p.commander or '—' }}
+            {% if p.decklist_url %}
+            <a href="{{ p.decklist_url }}" target="_blank" class="text-accent" style="font-size:0.75rem;margin-left:0.3rem;">deck</a>
+            {% endif %}
+          </span>
+          {% endif %}
+        </td>
+        <td>
+          {% if not p.dropped %}
+          <span class="badge badge-green">Active</span>
+          {% else %}
+          <span class="badge badge-red">Dropped</span>
+          {% endif %}
+        </td>
+        <td class="text-center">{{ p.get_total_points() }}</td>
+        <td class="text-center">{{ p.get_matches_played() }}</td>
+        {% if tournament.status != 'completed' %}
+        <td class="text-right">
+          <div class="btn-group" style="justify-content:flex-end;">
+            {% if not p.dropped %}
+            <form method="POST" action="{{ url_for('player.drop_player', player_id=p.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-outline btn-sm">Drop</button>
+            </form>
+            {% else %}
+            <form method="POST" action="{{ url_for('player.undrop_player', player_id=p.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-outline btn-sm">Undrop</button>
+            </form>
+            {% endif %}
+            {% if p.get_matches_played() == 0 %}
+            <form method="POST" action="{{ url_for('player.delete_player', player_id=p.id) }}" class="inline-form"
+                  onsubmit="return confirm('Remove {{ p.name }} from the tournament?')">
+              <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">&#128100;</div>
+  <h3>No players registered</h3>
+  <p>Register players to build your tournament roster.</p>
+  {% if tournament.status != 'completed' %}
+  <a href="{{ url_for('player.register_player', tournament_id=tournament.id) }}" class="btn btn-primary">+ Register Player</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<script>
+function filterPlayers() {
+  const q = document.getElementById('playerSearch').value.toLowerCase();
+  document.querySelectorAll('.player-row').forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(q) ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

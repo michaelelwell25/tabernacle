@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}{{ tournament.name }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a>
+  <span class="sep"></span>
+  <span>{{ tournament.name }}</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>{{ tournament.name }}</h1>
+    <div class="card-meta mt-1">
+      <span>{{ tournament.date.strftime('%b %d, %Y') if tournament.date else '' }}</span>
+      <span>&middot;</span>
+      <span>Scoring: {{ tournament.scoring_system }}</span>
+      <span>&middot;</span>
+      {% if tournament.status == 'registration' %}
+      <span class="badge badge-blue">Registration</span>
+      {% elif tournament.status == 'active' %}
+      <span class="badge badge-green">Active</span>
+      {% elif tournament.status == 'playoffs' %}
+      <span class="badge badge-gold">Playoffs</span>
+      {% else %}
+      <span class="badge badge-gray">Completed</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-value">{{ player_count }}</div>
+    <div class="stat-label">Players</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ rounds|length }}</div>
+    <div class="stat-label">Rounds</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ current_round.round_number if current_round else '—' }}</div>
+    <div class="stat-label">Current Round</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ current_round.status|capitalize if current_round else '—' }}</div>
+    <div class="stat-label">Round Status</div>
+  </div>
+</div>
+
+<!-- Actions -->
+<div class="section">
+  <div class="section-title">Actions</div>
+  <div class="btn-group">
+    {% if tournament.status == 'registration' %}
+    <a href="{{ url_for('player.list_players', tournament_id=tournament.id) }}" class="btn btn-primary">Manage Players</a>
+    <form method="POST" action="{{ url_for('tournament.start_tournament', tournament_id=tournament.id) }}" class="inline-form">
+      <button type="submit" class="btn btn-primary">Start Tournament</button>
+    </form>
+    {% elif tournament.status == 'active' %}
+    <form method="POST" action="{{ url_for('round.generate_round', tournament_id=tournament.id) }}" class="inline-form">
+      <button type="submit" class="btn btn-primary">Generate Next Round</button>
+    </form>
+    <a href="{{ url_for('player.list_players', tournament_id=tournament.id) }}" class="btn btn-secondary">Players</a>
+    <a href="{{ url_for('standings.view_standings', tournament_id=tournament.id) }}" class="btn btn-secondary">Standings</a>
+    {% if current_round %}
+    <a href="{{ url_for('round.view_round', round_id=current_round.id) }}" class="btn btn-outline">Current Pairings</a>
+    {% endif %}
+    <form method="POST" action="{{ url_for('tournament.complete_tournament', tournament_id=tournament.id) }}" class="inline-form">
+      <button type="submit" class="btn btn-secondary">Complete Tournament</button>
+    </form>
+    {% elif tournament.status == 'playoffs' %}
+    <a href="{{ url_for('playoff.view_playoff', tournament_id=tournament.id) }}" class="btn btn-primary">View Playoffs</a>
+    <a href="{{ url_for('standings.view_standings', tournament_id=tournament.id) }}" class="btn btn-secondary">Standings</a>
+    <a href="{{ url_for('player.list_players', tournament_id=tournament.id) }}" class="btn btn-secondary">Players</a>
+    {% else %}
+    <a href="{{ url_for('standings.view_standings', tournament_id=tournament.id) }}" class="btn btn-primary">Final Standings</a>
+    <a href="{{ url_for('player.list_players', tournament_id=tournament.id) }}" class="btn btn-secondary">Players</a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Settings Toggle -->
+{% if tournament.status == 'active' %}
+<div class="section">
+  <div class="section-title">Settings</div>
+  <div style="display:flex;flex-direction:column;gap:0.5rem;">
+    <form method="POST" action="{{ url_for('tournament.toggle_byes', tournament_id=tournament.id) }}" class="inline-form" style="display:flex;align-items:center;gap:0.75rem;">
+      <span class="text-secondary">Odd player handling:</span>
+      <button type="submit" class="btn btn-outline btn-sm">
+        {% if tournament.allow_byes %}Byes enabled — switch to 3-player pods{% else %}3-player pods — switch to byes{% endif %}
+      </button>
+    </form>
+    <form method="POST" action="{{ url_for('tournament.toggle_seat_scoring', tournament_id=tournament.id) }}" class="inline-form" style="display:flex;align-items:center;gap:0.75rem;">
+      <span class="text-secondary">Seat scoring:</span>
+      <button type="submit" class="btn btn-outline btn-sm">
+        {% if tournament.seat_scoring %}Enabled ({{ tournament.seat_win_points }}) — turn off{% else %}Disabled — turn on{% endif %}
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- Playoff Start -->
+{% if tournament.status == 'active' %}
+<div class="section">
+  <div class="section-title">Start Playoffs</div>
+  <p class="text-secondary" style="margin-bottom:0.75rem;">Cut to the top players and begin elimination rounds.</p>
+  <form method="POST" action="{{ url_for('playoff.start_playoff', tournament_id=tournament.id) }}" class="inline-form">
+    <div class="btn-group">
+      <button type="submit" name="cut_size" value="4" class="btn btn-outline">Top 4</button>
+      <button type="submit" name="cut_size" value="10" class="btn btn-outline">Top 10</button>
+      <button type="submit" name="cut_size" value="13" class="btn btn-outline">Top 13</button>
+      <button type="submit" name="cut_size" value="16" class="btn btn-outline">Top 16</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<!-- Rounds List -->
+{% if rounds %}
+<div class="section">
+  <div class="section-title">Rounds</div>
+  {% for r in rounds %}
+  <a href="{{ url_for('round.view_round', round_id=r.id) }}" style="color: inherit; text-decoration: none;">
+    <div class="round-item">
+      <div class="round-info">
+        <span class="round-number">Round {{ r.round_number }}</span>
+        {% if r.status == 'paired' %}
+        <span class="badge badge-blue">Paired</span>
+        {% elif r.status == 'complete' %}
+        <span class="badge badge-green">Complete</span>
+        {% else %}
+        <span class="badge badge-gray">{{ r.status|capitalize }}</span>
+        {% endif %}
+      </div>
+      <span class="text-secondary" style="font-size:0.85rem;">{{ r.get_pod_count() }} pod{{ 's' if r.get_pod_count() != 1 }}</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Danger Zone -->
+<div class="section mt-3">
+  <div class="section-title text-danger">Danger Zone</div>
+  <button class="btn btn-danger btn-sm" onclick="document.getElementById('deleteConfirm').classList.add('open')">Delete Tournament</button>
+</div>
+
+<!-- Delete Confirmation -->
+<div class="confirm-overlay" id="deleteConfirm">
+  <div class="confirm-dialog">
+    <h3>Delete Tournament?</h3>
+    <p>This will permanently delete <strong>{{ tournament.name }}</strong> and all associated data. This action cannot be undone.</p>
+    <div class="btn-group" style="justify-content:center;">
+      <form method="POST" action="{{ url_for('tournament.delete_tournament', tournament_id=tournament.id) }}">
+        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+      </form>
+      <button class="btn btn-secondary" onclick="document.getElementById('deleteConfirm').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

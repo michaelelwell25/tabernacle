@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Tournaments - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Tournaments</h1>
+  <a href="{{ url_for('tournament.create_tournament') }}" class="btn btn-primary btn-lg">+ Create Tournament</a>
+</div>
+
+{% if tournaments %}
+<div class="card-grid">
+  {% for t in tournaments %}
+  <a href="{{ url_for('tournament.view_tournament', tournament_id=t.id) }}" class="card-link">
+    <div class="card">
+      <div class="card-title">{{ t.name }}</div>
+      <div class="card-meta">
+        <span>{{ t.date.strftime('%b %d, %Y') if t.date else 'No date' }}</span>
+        <span>&middot;</span>
+        {% if t.status == 'registration' %}
+        <span class="badge badge-blue">Registration</span>
+        {% elif t.status == 'active' %}
+        <span class="badge badge-green">Active</span>
+        {% else %}
+        <span class="badge badge-gray">Completed</span>
+        {% endif %}
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">&#9876;</div>
+  <h3>No tournaments yet</h3>
+  <p>Create your first tournament to start managing pods, pairings, and standings.</p>
+  <a href="{{ url_for('tournament.create_tournament') }}" class="btn btn-primary btn-lg">+ Create Tournament</a>
+</div>
+{% endif %}
+{% endblock %}

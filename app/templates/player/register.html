@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Register Player - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}">{{ tournament.name }}</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('player.list_players', tournament_id=tournament.id) }}">Players</a>
+  <span class="sep"></span>
+  <span>Register</span>
+</div>
+
+<div class="page-header">
+  <h1>Register Player</h1>
+</div>
+
+{% if tournament.status == 'active' and tournament.current_round > 0 %}
+<div class="flash flash-warning" style="margin-bottom:1rem;">
+  Late registration — this player will start with 0 points for missed rounds.
+</div>
+{% endif %}
+
+<div class="card form-card">
+  <form method="POST" action="{{ url_for('player.register_player', tournament_id=tournament.id) }}">
+    <div class="form-group">
+      <label class="form-label" for="name">Player Name</label>
+      <input type="text" id="name" name="name" class="form-control" placeholder="e.g. Urza, Lord High Artificer" required autofocus>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="decklist_url">Decklist URL</label>
+      <div style="display:flex;gap:0.5rem;">
+        <input type="url" id="decklist_url" name="decklist_url" class="form-control" placeholder="https://moxfield.com/decks/..." style="flex:1;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="fetchDeck()" id="fetchBtn">Fetch</button>
+      </div>
+      <div class="form-hint">Paste a Moxfield link to auto-fill commander</div>
+      <div id="fetchStatus" style="margin-top:0.35rem;font-size:0.8rem;"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="commander">Commander</label>
+      <input type="text" id="commander" name="commander" class="form-control" placeholder="Auto-filled from decklist, or type manually">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="dci_number">DCI / Player ID</label>
+      <input type="text" id="dci_number" name="dci_number" class="form-control" placeholder="Optional">
+      <div class="form-hint">Optional identifier for the player</div>
+    </div>
+
+    <div class="btn-group mt-2">
+      <button type="submit" class="btn btn-primary btn-lg">Register</button>
+      <a href="{{ url_for('player.list_players', tournament_id=tournament.id) }}" class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+async function fetchDeck() {
+  const url = document.getElementById('decklist_url').value.trim();
+  const status = document.getElementById('fetchStatus');
+  const btn = document.getElementById('fetchBtn');
+
+  if (!url) { status.innerHTML = '<span style="color:var(--error)">Enter a URL first</span>'; return; }
+
+  const match = url.match(/moxfield\.com\/decks\/([A-Za-z0-9_-]+)/);
+  if (!match) { status.innerHTML = '<span style="color:var(--error)">Not a valid Moxfield URL</span>'; return; }
+
+  btn.disabled = true;
+  status.innerHTML = '<span style="color:var(--text-muted)">Fetching...</span>';
+
+  try {
+    const resp = await fetch('https://api2.moxfield.com/v3/decks/all/' + match[1], {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!resp.ok) throw new Error('API returned ' + resp.status);
+    const data = await resp.json();
+
+    const cmds = data.boards?.commanders?.cards || {};
+    const names = Object.values(cmds).map(v => v.card?.name).filter(Boolean);
+
+    if (names.length > 0) {
+      document.getElementById('commander').value = names.join(' / ');
+      status.innerHTML = '<span style="color:var(--success)">Found: ' + names.join(' / ') + '</span>';
+    } else {
+      status.innerHTML = '<span style="color:var(--warning)">No commander found in deck</span>';
+    }
+  } catch (e) {
+    status.innerHTML = '<span style="color:var(--warning)">Could not fetch — enter commander manually</span>';
+  }
+  btn.disabled = false;
+}
+
+// Auto-fetch when pasting a URL
+document.getElementById('decklist_url').addEventListener('paste', function() {
+  setTimeout(fetchDeck, 100);
+});
+</script>
+{% endblock %}

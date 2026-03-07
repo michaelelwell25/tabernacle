@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Create Tournament - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a>
+  <span class="sep"></span>
+  <span>Create</span>
+</div>
+
+<div class="page-header">
+  <h1>Create Tournament</h1>
+</div>
+
+<div class="card form-card">
+  <form method="POST" action="{{ url_for('tournament.create_tournament') }}">
+    <div class="form-group">
+      <label class="form-label" for="name">Tournament Name</label>
+      <input type="text" id="name" name="name" class="form-control" placeholder="e.g. Friday Night cEDH" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="date">Date</label>
+      <input type="date" id="date" name="date" class="form-control" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="scoring_system">Scoring System</label>
+      <select id="scoring_system" name="scoring_system" class="form-control">
+        <option value="3-1-0-0">3-1-0-0 (1st / 2nd / 3rd / 4th)</option>
+        <option value="4-2-1-0">4-2-1-0</option>
+        <option value="5-3-1-0">5-3-1-0</option>
+        <option value="5-0-0-0">5-0-0-0 (winner takes all)</option>
+      </select>
+      <div class="form-hint">Points awarded for 1st through 4th place finishes</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="bye_points">Bye Points</label>
+      <input type="number" id="bye_points" name="bye_points" class="form-control" value="1" min="0" max="10">
+      <div class="form-hint">Points awarded to players who receive a bye</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="draw_points">Draw Points</label>
+      <input type="number" id="draw_points" name="draw_points" class="form-control" value="1" min="0" max="10">
+      <div class="form-hint">Points awarded to each player when a pod draws</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="round_timer_minutes">Round Timer (minutes)</label>
+      <input type="number" id="round_timer_minutes" name="round_timer_minutes" class="form-control" value="80" min="0" max="999">
+      <div class="form-hint">Countdown timer per round. Set to 0 to disable.</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Seat-Based Scoring</label>
+      <div style="display:flex;gap:1rem;margin-top:0.5rem;">
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+          <input type="checkbox" name="seat_scoring" value="1" style="accent-color:var(--accent);" onchange="document.getElementById('seatConfig').style.display=this.checked?'block':'none'">
+          <span>Adjust points by seat position</span>
+        </label>
+      </div>
+      <div class="form-hint">Compensate for seat-order advantage with per-seat point values</div>
+      <div id="seatConfig" style="display:none;margin-top:0.75rem;padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius);">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+          <div>
+            <label class="form-label" style="font-size:0.8rem;">Win Points (seat 1-2-3-4)</label>
+            <input type="text" name="seat_win_points" class="form-control" value="5.2-5.4-5.6-5.8" style="font-size:0.85rem;">
+          </div>
+          <div>
+            <label class="form-label" style="font-size:0.8rem;">Draw Points (seat 1-2-3-4)</label>
+            <input type="text" name="seat_draw_points" class="form-control" value="0.2-0.4-0.6-0.8" style="font-size:0.85rem;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Odd Player Handling</label>
+      <div style="display:flex;gap:1rem;margin-top:0.5rem;">
+        <label class="toggle-option" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+          <input type="radio" name="allow_byes" value="1" checked style="accent-color:var(--accent);">
+          <span>Assign byes</span>
+        </label>
+        <label class="toggle-option" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+          <input type="radio" name="allow_byes" value="0" style="accent-color:var(--accent);">
+          <span>Allow 3-player pods</span>
+        </label>
+      </div>
+      <div class="form-hint">How to handle player counts not divisible by 4</div>
+    </div>
+
+    <div class="btn-group mt-2">
+      <button type="submit" class="btn btn-primary btn-lg">Create Tournament</button>
+      <a href="{{ url_for('tournament.list_tournaments') }}" class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

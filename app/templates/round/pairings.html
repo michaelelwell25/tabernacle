@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Round {{ round.round_number }} - {{ tournament.name }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}">{{ tournament.name }}</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('round.list_rounds', tournament_id=tournament.id) }}">Rounds</a>
+  <span class="sep"></span>
+  <span>Round {{ round.round_number }}</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>Round {{ round.round_number }}</h1>
+    <div class="card-meta mt-1">
+      {% if round.is_complete() %}
+      <span class="badge badge-green">Complete</span>
+      {% else %}
+      <span class="badge badge-blue">In Progress</span>
+      {% endif %}
+      <span>&middot;</span>
+      <span>{{ round.get_pod_count() }} pod{{ 's' if round.get_pod_count() != 1 }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Round Timer -->
+{% if round.timer_end and not round.is_complete() %}
+<div class="timer-bar" id="timerBar">
+  <div class="timer-display" id="timerDisplay">--:--</div>
+  <form method="POST" action="{{ url_for('round.reset_timer', round_id=round.id) }}" class="inline-form" style="display:flex;gap:0.4rem;align-items:center;">
+    <input type="number" name="minutes" value="{{ tournament.round_timer_minutes or 80 }}" class="form-control" style="width:4rem;padding:0.25rem 0.4rem;font-size:0.85rem;text-align:center;" min="1" max="999">
+    <button type="submit" class="btn btn-outline btn-sm" style="padding:0.2rem 0.6rem;">Reset</button>
+  </form>
+</div>
+<script>
+(function() {
+  const end = new Date("{{ round.timer_end.strftime('%Y-%m-%dT%H:%M:%S') }}Z").getTime();
+  const display = document.getElementById('timerDisplay');
+  const bar = document.getElementById('timerBar');
+  function tick() {
+    const now = Date.now();
+    const diff = end - now;
+    if (diff <= 0) {
+      display.textContent = "TIME!";
+      bar.classList.add('timer-expired');
+      return;
+    }
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    if (h > 0) display.textContent = h + ":" + String(m).padStart(2,'0') + ":" + String(s).padStart(2,'0');
+    else display.textContent = m + ":" + String(s).padStart(2,'0');
+    if (diff < 300000) bar.classList.add('timer-warning');
+    requestAnimationFrame(tick);
+  }
+  tick();
+})();
+</script>
+{% elif not round.timer_end and not round.is_complete() %}
+<div class="timer-bar">
+  <form method="POST" action="{{ url_for('round.reset_timer', round_id=round.id) }}" class="inline-form" style="display:flex;gap:0.4rem;align-items:center;">
+    <span class="text-secondary">No timer set —</span>
+    <input type="number" name="minutes" value="{{ tournament.round_timer_minutes or 80 }}" class="form-control" style="width:4rem;padding:0.25rem 0.4rem;font-size:0.85rem;text-align:center;" min="1" max="999">
+    <button type="submit" class="btn btn-outline btn-sm" style="padding:0.2rem 0.6rem;">Start Timer</button>
+  </form>
+</div>
+{% endif %}
+
+<form method="POST" action="{{ url_for('results.submit_results', round_id=round.id) }}" id="resultsForm">
+<div class="pod-grid">
+  {% for pod in round.pods.all() %}
+  <div class="pod-card {{ 'pod-bye' if pod.is_bye }}" id="pod-{{ pod.id }}">
+    <div class="pod-header">
+      <span>Table {{ pod.table_number }}</span>
+      {% if pod.is_bye %}
+      <span class="badge badge-gold">BYE</span>
+      {% elif pod.status == 'completed' %}
+      <span class="badge badge-green">Done</span>
+      {% endif %}
+    </div>
+    <div class="pod-body">
+      {% if pod.is_bye %}
+        {% for pp in pod.assignments %}
+        <div class="pod-player">
+          <div class="player-info">
+            <span class="seat">{{ pp.seat_position }}</span>
+            <span>{{ pp.player.name }}</span>
+            {% if pp.player.commander %}
+            <span class="commander-tag">{{ pp.player.commander }}</span>
+            {% endif %}
+          </div>
+          <span class="text-accent" style="font-size:0.8rem;font-weight:600;">+{{ tournament.bye_points }} pts</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        {% for pp in pod.assignments %}
+        <label class="pod-player result-pick" style="cursor:pointer;">
+          <div class="player-info">
+            <input type="radio" name="result_{{ pod.id }}" value="{{ pp.player_id }}"
+              style="accent-color:var(--success);"
+              {{ 'checked' if pp.placement == 1 }}>
+            <span>{{ pp.player.name }}</span>
+            {% if pp.player.commander %}
+            <span class="commander-tag">{{ pp.player.commander }}</span>
+            {% endif %}
+          </div>
+          <span class="pick-label badge badge-green" style="font-size:0.7rem;">WINNER</span>
+        </label>
+        {% endfor %}
+        <label class="pod-player result-pick draw-pick" style="cursor:pointer;border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.25rem;">
+          <div class="player-info">
+            <input type="radio" name="result_{{ pod.id }}" value="draw"
+              style="accent-color:var(--warning);"
+              {{ 'checked' if pod.status == "completed" and not pod.assignments.filter_by(placement=1).first() }}>
+            <span style="color:var(--warning);font-weight:500;">Draw</span>
+          </div>
+          <span class="pick-label badge badge-gray" style="font-size:0.7rem;">{% if tournament.seat_scoring %}by seat{% else %}{{ tournament.draw_points }} pts each{% endif %}</span>
+        </label>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if tournament.status in ('active', 'playoffs') %}
+<div class="section mt-2">
+  <div class="btn-group">
+    <button type="submit" class="btn btn-primary btn-lg">Save Results</button>
+    {% if round.is_complete() and is_latest_round and tournament.status == 'active' %}
+    <a href="#" onclick="event.preventDefault();document.getElementById('resultsForm').action='{{ url_for('results.submit_and_next', round_id=round.id) }}';document.getElementById('resultsForm').submit();" class="btn btn-primary">Save &amp; Generate Next Round</a>
+    {% endif %}
+    <a href="{{ url_for('standings.view_standings', tournament_id=tournament.id) }}" class="btn btn-secondary">Standings</a>
+  </div>
+</div>
+{% endif %}
+</form>
+
+{% if is_latest_round and tournament.status == 'active' %}
+<div class="section mt-3">
+  <button class="btn btn-danger btn-sm" onclick="document.getElementById('deleteRoundConfirm').classList.add('open')">Delete Round</button>
+</div>
+
+<div class="confirm-overlay" id="deleteRoundConfirm">
+  <div class="confirm-dialog">
+    <h3>Delete Round {{ round.round_number }}?</h3>
+    <p>This will remove the round and all its pairings and results. This cannot be undone.</p>
+    <div class="btn-group" style="justify-content:center;">
+      <form method="POST" action="{{ url_for('round.delete_round', round_id=round.id) }}">
+        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+      </form>
+      <button class="btn btn-secondary" onclick="document.getElementById('deleteRoundConfirm').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<style>
+.result-pick .pick-label { opacity: 0.2; transition: opacity 0.15s; }
+.result-pick input[type="radio"]:checked ~ .pick-label { opacity: 1; }
+.result-pick:hover { background: var(--bg-hover); border-radius: var(--radius); }
+.result-pick { transition: background 0.15s; }
+.timer-bar {
+  display: flex; align-items: center; gap: 1rem;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0.75rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.timer-display {
+  font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--success); min-width: 6rem;
+}
+.timer-warning .timer-display { color: var(--warning); }
+.timer-expired .timer-display { color: var(--error); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.commander-tag {
+  font-size: 0.75rem; color: var(--text-muted); font-style: italic;
+  margin-left: 0.4rem;
+}
+</style>
+{% endblock %}

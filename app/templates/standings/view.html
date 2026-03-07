@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Standings - {{ tournament.name }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}">{{ tournament.name }}</a>
+  <span class="sep"></span>
+  <span>Standings</span>
+</div>
+
+<div class="page-header">
+  <h1>{% if tournament.status == 'completed' %}Final {% endif %}Standings</h1>
+  <div class="btn-group">
+    <a href="{{ url_for('export.export_standings', tournament_id=tournament.id) }}" class="btn btn-outline btn-sm">Export CSV</a>
+  </div>
+</div>
+
+{% if standings %}
+<div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr>
+        <th class="text-center">#</th>
+        <th>Player</th>
+        <th class="text-center">Points</th>
+        <th class="text-center">OMW%</th>
+        <th class="text-center">GW%</th>
+        <th class="text-center">OGW%</th>
+        <th class="text-center">Played</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in standings %}
+      <tr class="{{ 'player-dropped' if s['player'].dropped }}">
+        <td class="text-center" style="font-weight:700;color:{% if loop.index == 1 %}var(--accent){% elif loop.index <= 3 %}var(--text-primary){% else %}var(--text-muted){% endif %};">{{ loop.index }}</td>
+        <td>
+          <span class="player-name">{{ s['player'].name }}</span>
+          {% if s['playoff_tier'] == 0 %}
+          <span class="badge badge-gold" style="margin-left:0.4rem;font-size:0.65rem;">CHAMPION</span>
+          {% elif s['playoff_tier'] == 1 %}
+          <span class="badge badge-gray" style="margin-left:0.4rem;font-size:0.65rem;">FINALIST</span>
+          {% elif s['playoff_tier'] == 2 %}
+          <span class="badge badge-gray" style="margin-left:0.4rem;font-size:0.65rem;">TOP 8</span>
+          {% endif %}
+        </td>
+        <td class="text-center" style="font-weight:700;">{{ '%.1f'|format(s['points']) if s['points'] != s['points']|int else s['points']|int }}</td>
+        <td class="text-center">{{ '%.1f'|format(s['omw_percentage'] * 100) }}%</td>
+        <td class="text-center">{{ '%.1f'|format(s['gw_percentage'] * 100) }}%</td>
+        <td class="text-center">{{ '%.1f'|format(s['ogw_percentage'] * 100) }}%</td>
+        <td class="text-center">{{ s['matches_played'] }}</td>
+        <td>
+          {% if not s['player'].dropped %}
+          <span class="badge badge-green">Active</span>
+          {% else %}
+          <span class="badge badge-red">Dropped</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">&#127942;</div>
+  <h3>No standings yet</h3>
+  <p>Complete at least one round to generate standings.</p>
+</div>
+{% endif %}
+{% endblock %}

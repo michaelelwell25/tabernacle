@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Playoffs - {{ tournament.name }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}">{{ tournament.name }}</a>
+  <span class="sep"></span>
+  <span>Playoffs</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>Playoffs &mdash; Top {{ tournament.playoff_cut }}</h1>
+    <div class="card-meta mt-1">
+      {% if tournament.status == 'playoffs' %}
+      <span class="badge badge-gold">In Progress</span>
+      {% else %}
+      <span class="badge badge-green">Complete</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Qualified Players -->
+<div class="section">
+  <div class="section-title">Qualified Players</div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr><th>Seed</th><th>Player</th><th>Points</th></tr>
+      </thead>
+      <tbody>
+        {% for s in top_players %}
+        <tr>
+          <td><strong>{{ loop.index }}</strong></td>
+          <td>{{ s['player'].name }}</td>
+          <td>{{ s['total_points'] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Playoff Rounds -->
+{% for pr in playoff_rounds %}
+<div class="section">
+  <div class="section-title">
+    {% if pr.playoff_stage == 'semi' %}Semifinals{% else %}Finals{% endif %}
+    &mdash; Round {{ pr.round_number }}
+    {% if pr.status == 'completed' or pr.is_complete() %}
+    <span class="badge badge-green" style="margin-left:0.5rem;">Complete</span>
+    {% else %}
+    <span class="badge badge-blue" style="margin-left:0.5rem;">In Progress</span>
+    {% endif %}
+  </div>
+
+  {% for pod in pr.pods.order_by('pod_number') %}
+  <div class="pod-card {{ 'pod-bye' if pod.is_bye }}" style="margin-bottom:1rem;">
+    <div class="pod-header">
+      {% if pod.is_bye %}
+      <span>Bye</span>
+      <span class="badge badge-gold">BYE TO FINALS</span>
+      {% else %}
+      <span>Table {{ pod.table_number }}</span>
+      {% if pod.is_complete() %}
+      <span class="badge badge-green">Done</span>
+      {% endif %}
+      {% endif %}
+    </div>
+    <div class="pod-body" style="padding:0.75rem 1rem;">
+      {% for a in pod.assignments %}
+      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.35rem 0;">
+        <span style="flex:1;font-weight:500;">{{ a.player.name }}</span>
+        {% if pod.is_bye %}
+        <span class="badge badge-gold">Advances</span>
+        {% elif a.placement == 1 %}
+        <span class="badge badge-green">WINNER</span>
+        {% elif pod.is_complete() %}
+        <span class="text-secondary" style="font-size:0.8rem;">Eliminated</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if not pr.is_complete() %}
+  <a href="{{ url_for('results.submit_results', round_id=pr.id) }}" class="btn btn-primary" style="margin-top:0.5rem;">Submit Results</a>
+  {% endif %}
+</div>
+{% endfor %}
+
+<!-- Advance / Complete Buttons -->
+<div class="section">
+  <div class="btn-group">
+    {% set has_semi = playoff_rounds|selectattr('playoff_stage', 'equalto', 'semi')|list %}
+    {% set has_final = playoff_rounds|selectattr('playoff_stage', 'equalto', 'final')|list %}
+
+    {% if has_semi and not has_final %}
+      {% set semi = has_semi[0] %}
+      {% if semi.is_complete() %}
+      <form method="POST" action="{{ url_for('playoff.advance', tournament_id=tournament.id) }}" class="inline-form">
+        <button type="submit" class="btn btn-primary">Advance to Finals</button>
+      </form>
+      {% else %}
+      <span class="text-secondary">Complete all semifinal pods to advance.</span>
+      {% endif %}
+    {% endif %}
+
+    {% if has_final %}
+      {% set final = has_final[0] %}
+      {% if final.is_complete() and tournament.status == 'playoffs' %}
+      <form method="POST" action="{{ url_for('playoff.complete_playoff', tournament_id=tournament.id) }}" class="inline-form">
+        <button type="submit" class="btn btn-primary btn-lg">Complete Tournament</button>
+      </form>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<div style="margin-top:1rem;">
+  <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}" class="btn btn-outline">Back to Dashboard</a>
+</div>
+{% endblock %}
