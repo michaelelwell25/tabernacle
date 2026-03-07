@@ -67,6 +67,19 @@ def submit_results(round_id):
                            pods=pods)
 
 
+@bp.route('/pod/<int:pod_id>/clear', methods=['POST'])
+def clear_pod_result(pod_id):
+    pod = Pod.query.get_or_404(pod_id)
+    round_obj = pod.round
+    for assignment in pod.assignments:
+        assignment.placement = None
+        assignment.points_earned = None
+    pod.status = 'pending'
+    db.session.commit()
+    flash(f'Table {pod.table_number} result cleared.', 'success')
+    return redirect(url_for('round.view_round', round_id=round_obj.id))
+
+
 @bp.route('/<int:round_id>/submit-and-next', methods=['POST'])
 def submit_and_next(round_id):
     round_obj = Round.query.get_or_404(round_id)

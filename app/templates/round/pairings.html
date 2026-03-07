@@ -80,6 +80,9 @@
       <span class="badge badge-gold">BYE</span>
       {% elif pod.status == 'completed' %}
       <span class="badge badge-green">Done</span>
+      <form method="POST" action="{{ url_for('results.clear_pod_result', pod_id=pod.id) }}" class="inline-form" style="margin-left:0.4rem;">
+        <button type="submit" class="btn-clear" title="Clear result">&#x21ba;</button>
+      </form>
       {% endif %}
     </div>
     <div class="pod-body">
@@ -180,6 +183,20 @@
 .commander-tag {
   font-size: 0.75rem; color: var(--text-muted); font-style: italic;
   margin-left: 0.4rem;
+}
+.btn-clear {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 1rem; padding: 0.1rem 0.3rem; border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.btn-clear:hover { color: var(--warning); background: var(--bg-hover); }
+@media (max-width: 640px) {
+  .pod-player { padding: 0.6rem 0.85rem; }
+  .pod-player .player-info { flex-wrap: wrap; gap: 0.25rem; }
+  .commander-tag { display: block; margin-left: 0; font-size: 0.7rem; }
+  .result-pick { min-height: 44px; }
+  .timer-bar { flex-wrap: wrap; padding: 0.6rem 0.85rem; gap: 0.5rem; }
+  .timer-display { font-size: 1.5rem; min-width: auto; }
 }
 </style>
 {% endblock %}

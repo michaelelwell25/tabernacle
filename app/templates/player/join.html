@@ -57,7 +57,7 @@
           <input type="text" id="commander" name="commander" class="form-control" placeholder="Auto-filled or type manually">
         </div>
 
-        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">Join Tournament</button>
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;" onclick="localStorage.setItem('tabernacle_player_{{tournament.id}}',document.getElementById('name').value.trim())">Join Tournament</button>
       </form>
     </div>
     {% else %}
@@ -75,11 +75,23 @@
     <!-- Current Pairings Lookup -->
     {% if tournament.status in ('active', 'playoffs') and tournament.current_round > 0 %}
     <div class="card" style="max-width:28rem;margin:0 auto 2rem;padding:1.25rem;">
-      <h2 style="font-size:1.1rem;margin-bottom:0.75rem;">Find My Table</h2>
-      <div style="display:flex;gap:0.5rem;">
-        <input type="text" id="seatSearch" class="form-control" placeholder="Type your name..." oninput="findSeat()" style="flex:1;">
-      </div>
-      <div id="seatResult" style="margin-top:0.75rem;"></div>
+      <h2 style="font-size:1.1rem;margin-bottom:0.75rem;">My Table — Round {{ tournament.current_round }}</h2>
+      <div id="autoSeatResult"></div>
+      <details style="margin-top:0.75rem;">
+        <summary class="text-secondary" style="cursor:pointer;font-size:0.85rem;">Search by name</summary>
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+          <input type="text" id="seatSearch" class="form-control" placeholder="Type your name..." oninput="findSeat()" style="flex:1;">
+        </div>
+        <div id="seatResult" style="margin-top:0.75rem;"></div>
+      </details>
+    </div>
+    {% endif %}
+
+    <!-- Round History (auto-shown for saved player) -->
+    {% if tournament.current_round and tournament.current_round > 0 %}
+    <div id="roundHistory" class="card" style="max-width:28rem;margin:0 auto 2rem;padding:1.25rem;display:none;">
+      <h2 style="font-size:1.1rem;margin-bottom:0.75rem;">My Rounds</h2>
+      <div id="roundHistoryContent"></div>
     </div>
     {% endif %}
 
@@ -157,6 +169,19 @@ document.getElementById('decklist_url')?.addEventListener('paste', function() {
 });
 
 const seatData = {{ seat_data|tojson }};
+
+function renderSeatCard(m) {
+  if (m.is_bye) {
+    return '<div class="seat-card seat-card-bye">' +
+      '<strong>' + m.name + '</strong><br>' +
+      '<span class="badge badge-gold">BYE this round</span></div>';
+  }
+  return '<div class="seat-card">' +
+    '<div class="seat-card-table">Table ' + m.table + '</div>' +
+    '<div class="seat-card-detail">Seat ' + m.seat + '</div>' +
+    '<div class="seat-card-opponents">vs ' + m.opponents.join(', ') + '</div></div>';
+}
+
 function findSeat() {
   const q = document.getElementById('seatSearch').value.trim().toLowerCase();
   const result = document.getElementById('seatResult');
@@ -168,21 +193,72 @@ function findSeat() {
   } else if (matches.length > 3) {
     result.innerHTML = '<span class="text-secondary">Multiple matches — keep typing...</span>';
   } else {
-    result.innerHTML = matches.map(m => {
-      if (m.is_bye) {
-        return '<div class="card" style="padding:0.75rem;margin-bottom:0.5rem;background:var(--bg-secondary);">' +
-          '<strong>' + m.name + '</strong><br>' +
-          '<span class="badge badge-gold">BYE this round</span></div>';
-      }
-      return '<div class="card" style="padding:0.75rem;margin-bottom:0.5rem;background:var(--bg-secondary);">' +
-        '<strong>' + m.name + '</strong><br>' +
-        '<span style="font-size:1.5rem;font-weight:700;color:var(--accent);">Table ' + m.table + '</span>' +
-        '<span class="text-secondary" style="margin-left:0.5rem;">Seat ' + m.seat + '</span><br>' +
-        '<span class="text-secondary" style="font-size:0.85rem;">vs ' + m.opponents.join(', ') + '</span></div>';
-    }).join('');
+    result.innerHTML = matches.map(renderSeatCard).join('');
   }
 }
+
+const roundHistory = {{ round_history|tojson }};
+
+// Auto-lookup saved player
+(function() {
+  const saved = localStorage.getItem('tabernacle_player_{{ tournament.id }}');
+  if (!saved) return;
+
+  // Auto seat lookup
+  const autoResult = document.getElementById('autoSeatResult');
+  if (autoResult && seatData.length > 0) {
+    const match = seatData.find(s => s.name.toLowerCase() === saved.toLowerCase());
+    if (match) {
+      autoResult.innerHTML = renderSeatCard(match);
+    } else {
+      autoResult.innerHTML = '<span class="text-secondary">No pairing found for ' + saved + '</span>';
+    }
+  }
+
+  // Round history
+  const historyDiv = document.getElementById('roundHistory');
+  const historyContent = document.getElementById('roundHistoryContent');
+  if (!historyDiv || !historyContent) return;
+
+  const key = Object.keys(roundHistory).find(k => k.toLowerCase() === saved.toLowerCase());
+  if (!key || roundHistory[key].length === 0) return;
+
+  historyDiv.style.display = 'block';
+  const badges = { win: 'badge-green', loss: 'badge-red', draw: 'badge-gray', bye: 'badge-gold', pending: 'badge-blue' };
+  historyContent.innerHTML = roundHistory[key].map(r => {
+    const b = badges[r.result] || 'badge-gray';
+    const label = r.result.charAt(0).toUpperCase() + r.result.slice(1);
+    const pts = r.points !== null ? ' (+' + r.points + ')' : '';
+    const vs = r.is_bye ? '' : '<div class="text-secondary" style="font-size:0.8rem;">vs ' + r.opponents.join(', ') + '</div>';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);">' +
+      '<div><strong>R' + r.round + '</strong> — Table ' + r.table + vs + '</div>' +
+      '<div><span class="badge ' + b + '">' + label + pts + '</span></div></div>';
+  }).join('');
+})();
 </script>
 <script>setInterval(()=>fetch('/health'),240000);</script>
+<style>
+.seat-card {
+  padding: 1rem; margin-bottom: 0.5rem; background: var(--bg-secondary);
+  border: 1px solid var(--border); border-radius: var(--radius-lg); text-align: center;
+}
+.seat-card-table {
+  font-size: 2rem; font-weight: 700; color: var(--accent); margin: 0.25rem 0;
+}
+.seat-card-detail {
+  font-size: 1rem; color: var(--text-secondary); margin-bottom: 0.5rem;
+}
+.seat-card-opponents {
+  font-size: 0.85rem; color: var(--text-muted);
+}
+@media (max-width: 640px) {
+  .container { padding: 0.75rem; }
+  h1 { font-size: 1.3rem; }
+  .card, .form-card { padding: 1rem; }
+  .form-control { font-size: 16px; } /* prevents iOS zoom */
+  .btn-lg { padding: 0.85rem 1.25rem; width: 100%; }
+  .table th, .table td { padding: 0.5rem 0.6rem; font-size: 0.8rem; }
+}
+</style>
 </body>
 </html>

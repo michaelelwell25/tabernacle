@@ -123,9 +123,31 @@ def join_tournament(tournament_id):
                         'opponents': [x.player.name for x in pod.assignments if x.player_id != a.player_id]
                     })
 
+    # Build round history per player for display
+    from app.models.round import Round
+    from app.models.pod import Pod
+    from app.models.pod_assignment import PodAssignment
+    round_history = {}
+    rounds = Round.query.filter_by(tournament_id=tournament_id).order_by(Round.round_number).all()
+    for r in rounds:
+        for pod in r.pods:
+            for a in pod.assignments:
+                pname = a.player.name
+                if pname not in round_history:
+                    round_history[pname] = []
+                entry = {
+                    'round': r.round_number,
+                    'table': pod.table_number,
+                    'is_bye': pod.is_bye,
+                    'opponents': [x.player.name for x in pod.assignments if x.player_id != a.player_id],
+                    'result': 'bye' if pod.is_bye else ('win' if a.placement == 1 else ('draw' if a.points_earned and a.points_earned > 0 and a.placement is None else ('loss' if a.points_earned is not None else 'pending'))),
+                    'points': a.points_earned
+                }
+                round_history[pname].append(entry)
+
     return render_template('player/join.html', tournament=tournament, players=players,
                            player_count=player_count, can_register=can_register,
-                           seat_data=seat_data)
+                           seat_data=seat_data, round_history=round_history)
 
 
 @bp.route('/<int:player_id>/edit', methods=['POST'])
