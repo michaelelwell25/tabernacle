@@ -29,6 +29,16 @@
   </div>
 </div>
 
+<!-- Player Join Link -->
+<div class="section" style="margin-bottom:1.25rem;">
+  <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+    <span class="text-secondary">Player link:</span>
+    <code id="joinUrl" style="background:var(--bg-card);border:1px solid var(--border);padding:0.3rem 0.6rem;border-radius:var(--radius);font-size:0.85rem;word-break:break-all;">{{ request.url_root.rstrip('/') }}{{ url_for('player.join_tournament', tournament_id=tournament.id) }}</code>
+    <button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('joinUrl').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)">Copy</button>
+    <a href="{{ url_for('player.join_tournament', tournament_id=tournament.id) }}" class="btn btn-outline btn-sm" target="_blank">Open</a>
+  </div>
+</div>
+
 <!-- Stats -->
 <div class="stats-row">
   <div class="stat-card">
