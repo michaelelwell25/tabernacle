@@ -51,11 +51,6 @@ def generate_round(tournament_id):
         round_obj = generate_swiss_pairings(tournament_id, next_round_number)
         tournament.current_round = next_round_number
 
-        # Start round timer
-        from datetime import timedelta
-        if tournament.round_timer_minutes and tournament.round_timer_minutes > 0:
-            round_obj.timer_end = datetime.utcnow() + timedelta(minutes=tournament.round_timer_minutes)
-
         db.session.commit()
 
         flash(f'Round {next_round_number} pairings generated!', 'success')

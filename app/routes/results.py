@@ -78,8 +78,6 @@ def submit_and_next(round_id):
     try:
         next_round_number = tournament.current_round + 1
         new_round = generate_swiss_pairings(tournament.id, next_round_number)
-        if tournament.round_timer_minutes and tournament.round_timer_minutes > 0:
-            new_round.timer_end = datetime.utcnow() + timedelta(minutes=tournament.round_timer_minutes)
         db.session.commit()
         flash(f'Results saved! Round {new_round.round_number} generated.', 'success')
         return redirect(url_for('round.view_round', round_id=new_round.id))
