@@ -142,5 +142,14 @@ def delete_tournament(tournament_id):
     db.session.delete(tournament)
     db.session.commit()
 
+    # Reset auto-increment if no tournaments remain
+    if Tournament.query.count() == 0:
+        db.session.execute(db.text(
+            "DELETE FROM sqlite_sequence WHERE name='tournaments'"
+            if 'sqlite' in db.engine.url.drivername
+            else "ALTER SEQUENCE tournaments_id_seq RESTART WITH 1"
+        ))
+        db.session.commit()
+
     flash(f'Tournament "{tournament.name}" deleted', 'success')
     return redirect(url_for('tournament.list_tournaments'))
