@@ -82,9 +82,17 @@ def clear_pod_result(pod_id):
 
 @bp.route('/<int:round_id>/submit-and-next', methods=['POST'])
 def submit_and_next(round_id):
+    import traceback, sys
     round_obj = Round.query.get_or_404(round_id)
     tournament = round_obj.tournament
-    _save_results(round_obj)
+
+    try:
+        _save_results(round_obj)
+    except Exception as e:
+        traceback.print_exc(file=sys.stderr)
+        db.session.rollback()
+        flash(f'Error saving results: {str(e)}', 'error')
+        return redirect(url_for('round.view_round', round_id=round_id))
 
     if not round_obj.is_complete():
         flash('Results saved, but not all pods have results — cannot generate next round.', 'warning')
@@ -99,6 +107,7 @@ def submit_and_next(round_id):
         flash(f'Results saved! Round {new_round.round_number} generated.', 'success')
         return redirect(url_for('round.view_round', round_id=new_round.id))
     except Exception as e:
+        traceback.print_exc(file=sys.stderr)
         db.session.rollback()
         flash(f'Results saved, but could not generate next round: {str(e)}', 'error')
         return redirect(url_for('round.view_round', round_id=round_id))

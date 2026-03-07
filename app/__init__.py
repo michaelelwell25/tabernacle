@@ -1,5 +1,6 @@
 import os
-from flask import Flask, session, redirect, url_for, request, render_template_string
+import traceback
+from flask import Flask, session, redirect, url_for, request, render_template_string, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
@@ -55,5 +56,12 @@ def create_app(config_name='development'):
 
         if not session.get('authenticated'):
             return redirect(url_for('auth.login', next=request.url))
+
+    @app.errorhandler(500)
+    def internal_error(e):
+        traceback.print_exc()
+        db.session.rollback()
+        flash(f'Server error: {str(e)}', 'error')
+        return redirect(request.referrer or url_for('index'))
 
     return app
