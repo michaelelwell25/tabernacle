@@ -7,7 +7,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 
 # Public routes that don't need auth
-PUBLIC_ENDPOINTS = {'player.join_tournament', 'auth.login', 'health', 'static'}
+PUBLIC_ENDPOINTS = {'player.join_tournament', 'player.moxfield_fetch', 'auth.login', 'health', 'static'}
 
 
 def create_app(config_name='development'):

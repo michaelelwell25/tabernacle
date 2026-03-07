@@ -136,27 +136,20 @@ async function fetchDeck() {
 
   if (!url) { status.innerHTML = '<span style="color:var(--error)">Enter a URL first</span>'; return; }
 
-  const match = url.match(/moxfield\.com\/decks\/([A-Za-z0-9_-]+)/);
-  if (!match) { status.innerHTML = '<span style="color:var(--error)">Not a valid Moxfield URL</span>'; return; }
+  if (!url.match(/moxfield\.com\/decks\//)) { status.innerHTML = '<span style="color:var(--error)">Not a valid Moxfield URL</span>'; return; }
 
   btn.disabled = true;
   status.innerHTML = '<span style="color:var(--text-muted)">Fetching...</span>';
 
   try {
-    const resp = await fetch('https://api2.moxfield.com/v3/decks/all/' + match[1], {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (!resp.ok) throw new Error('API returned ' + resp.status);
+    const resp = await fetch('/players/api/moxfield-fetch?url=' + encodeURIComponent(url));
     const data = await resp.json();
 
-    const cmds = data.boards?.commanders?.cards || {};
-    const names = Object.values(cmds).map(v => v.card?.name).filter(Boolean);
-
-    if (names.length > 0) {
-      document.getElementById('commander').value = names.join(' / ');
-      status.innerHTML = '<span style="color:var(--success)">Found: ' + names.join(' / ') + '</span>';
+    if (resp.ok && data.commander) {
+      document.getElementById('commander').value = data.commander;
+      status.innerHTML = '<span style="color:var(--success)">Found: ' + data.commander + '</span>';
     } else {
-      status.innerHTML = '<span style="color:var(--warning)">No commander found in deck</span>';
+      status.innerHTML = '<span style="color:var(--warning)">No commander found — enter manually</span>';
     }
   } catch (e) {
     status.innerHTML = '<span style="color:var(--warning)">Could not fetch — enter commander manually</span>';

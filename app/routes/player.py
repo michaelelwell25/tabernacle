@@ -1,9 +1,22 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from app import db
 from app.models.tournament import Tournament
 from app.models.player import Player
 
 bp = Blueprint('player', __name__, url_prefix='/players')
+
+
+@bp.route('/api/moxfield-fetch')
+def moxfield_fetch():
+    """Proxy endpoint for Moxfield API to avoid CORS issues."""
+    url = request.args.get('url', '')
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+    from app.services.moxfield_service import fetch_moxfield_deck
+    commander, deck_name = fetch_moxfield_deck(url)
+    if commander:
+        return jsonify({'commander': commander, 'deck_name': deck_name})
+    return jsonify({'error': 'Could not fetch deck'}), 404
 
 
 @bp.route('/tournament/<int:tournament_id>')
