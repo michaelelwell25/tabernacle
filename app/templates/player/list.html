@@ -21,14 +21,14 @@
 </div>
 
 {% if tournament.status != 'completed' %}
-<div id="csvImport" class="card" style="max-width:28rem;margin-bottom:1.25rem;display:none;">
+<div id="csvImport" class="card" style="max-width:28rem;margin-bottom:1.25rem;">
   <form method="POST" action="{{ url_for('player.import_csv', tournament_id=tournament.id) }}" enctype="multipart/form-data" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
     <input type="file" name="csv_file" accept=".csv" class="form-control" style="flex:1;min-width:10rem;" required>
     <button type="submit" class="btn btn-primary btn-sm">Upload</button>
   </form>
   <div class="form-hint" style="margin-top:0.5rem;">CSV with columns: <code>name</code>, <code>commander</code>, <code>decklist</code> (optional). Moxfield URLs auto-fetch commanders.</div>
 </div>
-<style>#csvImport.open { display: block; }</style>
+<style>#csvImport { display: none; } #csvImport.open { display: block; }</style>
 {% endif %}
 
 <!-- Search -->
