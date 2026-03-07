@@ -86,14 +86,19 @@ def submit_and_next(round_id):
     tournament = round_obj.tournament
     _save_results(round_obj)
 
+    if not round_obj.is_complete():
+        flash('Results saved, but not all pods have results — cannot generate next round.', 'warning')
+        return redirect(url_for('round.view_round', round_id=round_id))
+
     from app.services.pairing_service import generate_swiss_pairings
-    from datetime import datetime, timedelta
     try:
         next_round_number = tournament.current_round + 1
         new_round = generate_swiss_pairings(tournament.id, next_round_number)
+        tournament.current_round = next_round_number
         db.session.commit()
         flash(f'Results saved! Round {new_round.round_number} generated.', 'success')
         return redirect(url_for('round.view_round', round_id=new_round.id))
-    except ValueError as e:
+    except Exception as e:
+        db.session.rollback()
         flash(f'Results saved, but could not generate next round: {str(e)}', 'error')
         return redirect(url_for('round.view_round', round_id=round_id))
