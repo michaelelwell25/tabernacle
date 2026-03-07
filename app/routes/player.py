@@ -123,9 +123,12 @@ def join_tournament(tournament_id):
 
     # Build current round seating data for player lookup
     seat_data = []
+    timer_end = None
+    current_round = None
     if tournament.status in ('active', 'playoffs') and tournament.current_round > 0:
         current_round = tournament.get_current_round()
         if current_round:
+            timer_end = current_round.timer_end
             for pod in current_round.pods:
                 for a in pod.assignments:
                     seat_data.append({
@@ -160,7 +163,8 @@ def join_tournament(tournament_id):
 
     return render_template('player/join.html', tournament=tournament, players=players,
                            player_count=player_count, can_register=can_register,
-                           seat_data=seat_data, round_history=round_history)
+                           seat_data=seat_data, round_history=round_history,
+                           timer_end=timer_end)
 
 
 @bp.route('/tournament/<int:tournament_id>/import-csv', methods=['POST'])

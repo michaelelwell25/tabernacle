@@ -34,6 +34,36 @@
       </div>
     </div>
 
+    {% if timer_end %}
+    <div id="playerTimer" style="text-align:center;margin-bottom:1.5rem;">
+      <div id="playerTimerDisplay" style="font-size:2.5rem;font-weight:700;color:var(--success);font-variant-numeric:tabular-nums;">--:--</div>
+      <div class="text-secondary" style="font-size:0.85rem;">Round {{ tournament.current_round }} Timer</div>
+    </div>
+    <script>
+    (function() {
+      const end = new Date("{{ timer_end.strftime('%Y-%m-%dT%H:%M:%S') }}Z").getTime();
+      const display = document.getElementById('playerTimerDisplay');
+      const container = document.getElementById('playerTimer');
+      function tick() {
+        const diff = end - Date.now();
+        if (diff <= 0) {
+          display.textContent = "TIME!";
+          display.style.color = 'var(--error)';
+          display.style.animation = 'pulse 1s infinite';
+          return;
+        }
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        display.textContent = h > 0 ? h+":"+String(m).padStart(2,'0')+":"+String(s).padStart(2,'0') : m+":"+String(s).padStart(2,'0');
+        if (diff < 300000) display.style.color = 'var(--warning)';
+        requestAnimationFrame(tick);
+      }
+      tick();
+    })();
+    </script>
+    {% endif %}
+
     {% if can_register %}
     <div class="card form-card" style="max-width:28rem;margin:0 auto 2rem;">
       <h2 style="font-size:1.1rem;margin-bottom:1rem;">Register</h2>
