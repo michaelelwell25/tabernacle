@@ -33,14 +33,11 @@ class ProductionConfig(Config):
     DEBUG = False
     SQLALCHEMY_ECHO = False
 
-    @property
-    def SQLALCHEMY_DATABASE_URI(self):
-        uri = os.environ.get('DATABASE_URL') or \
-            'sqlite:///' + os.path.join(os.path.dirname(basedir), 'tournament.db')
-        # Render uses postgres:// but SQLAlchemy needs postgresql://
-        if uri.startswith('postgres://'):
-            uri = uri.replace('postgres://', 'postgresql://', 1)
-        return uri
+    # Render uses postgres:// but SQLAlchemy needs postgresql://
+    _db_url = os.environ.get('DATABASE_URL') or \
+        'sqlite:///' + os.path.join(os.path.dirname(basedir), 'tournament.db')
+    SQLALCHEMY_DATABASE_URI = _db_url.replace('postgres://', 'postgresql://', 1) \
+        if _db_url.startswith('postgres://') else _db_url
 
 
 class TestingConfig(Config):
