@@ -17,6 +17,7 @@ except ImportError:
 
 MAX_BRACKET_SPREAD = 3
 CANDIDATE_CAP = 50000
+ILP_PLAYER_CAP = 56  # Above this, use greedy (ILP too slow on shared CPU)
 
 
 def generate_swiss_pairings(tournament_id, round_number):
@@ -53,11 +54,13 @@ def generate_swiss_pairings(tournament_id, round_number):
         if not tournament.allow_byes and len(pool) % 4 != 0:
             pod_assignments = _solve_with_short_pods(pool, tournament, points_map, rank_map, history)
         else:
-            candidates = generate_candidate_pods(pool, points_map, rank_map, history)
-
-            if HAS_PULP and len(candidates) <= CANDIDATE_CAP:
-                pod_assignments = solve_ilp(candidates, pool, points_map, rank_map, history)
-                if pod_assignments is None:
+            if HAS_PULP and len(pool) <= ILP_PLAYER_CAP:
+                candidates = generate_candidate_pods(pool, points_map, rank_map, history)
+                if len(candidates) <= CANDIDATE_CAP:
+                    pod_assignments = solve_ilp(candidates, pool, points_map, rank_map, history)
+                    if pod_assignments is None:
+                        pod_assignments = greedy_fallback(pool, points_map, rank_map, history)
+                else:
                     pod_assignments = greedy_fallback(pool, points_map, rank_map, history)
             else:
                 pod_assignments = greedy_fallback(pool, points_map, rank_map, history)
@@ -116,10 +119,13 @@ def _solve_with_short_pods(pool, tournament, points_map, rank_map, history):
 
     # Solve main pool (divisible by 4)
     if len(main_pool) > 0:
-        candidates = generate_candidate_pods(main_pool, points_map, rank_map, history)
-        if HAS_PULP and len(candidates) <= CANDIDATE_CAP:
-            pod_assignments = solve_ilp(candidates, main_pool, points_map, rank_map, history)
-            if pod_assignments is None:
+        if HAS_PULP and len(main_pool) <= ILP_PLAYER_CAP:
+            candidates = generate_candidate_pods(main_pool, points_map, rank_map, history)
+            if len(candidates) <= CANDIDATE_CAP:
+                pod_assignments = solve_ilp(candidates, main_pool, points_map, rank_map, history)
+                if pod_assignments is None:
+                    pod_assignments = greedy_fallback(main_pool, points_map, rank_map, history)
+            else:
                 pod_assignments = greedy_fallback(main_pool, points_map, rank_map, history)
         else:
             pod_assignments = greedy_fallback(main_pool, points_map, rank_map, history)
