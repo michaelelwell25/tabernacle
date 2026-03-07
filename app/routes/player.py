@@ -163,6 +163,76 @@ def join_tournament(tournament_id):
                            seat_data=seat_data, round_history=round_history)
 
 
+@bp.route('/tournament/<int:tournament_id>/import-csv', methods=['POST'])
+def import_csv(tournament_id):
+    """Import players from a CSV file."""
+    import csv
+    import io
+    tournament = Tournament.query.get_or_404(tournament_id)
+
+    if tournament.status == 'completed':
+        flash('Cannot import players to a completed tournament', 'error')
+        return redirect(url_for('player.list_players', tournament_id=tournament_id))
+
+    file = request.files.get('csv_file')
+    if not file or not file.filename:
+        flash('No file selected', 'error')
+        return redirect(url_for('player.list_players', tournament_id=tournament_id))
+
+    try:
+        content = file.read().decode('utf-8-sig')
+        reader = csv.DictReader(io.StringIO(content))
+
+        # Normalize column headers (case-insensitive, strip whitespace)
+        if not reader.fieldnames:
+            flash('CSV file is empty', 'error')
+            return redirect(url_for('player.list_players', tournament_id=tournament_id))
+
+        added = 0
+        skipped = 0
+        for row in reader:
+            # Case-insensitive column lookup
+            norm = {k.strip().lower(): v.strip() for k, v in row.items() if k}
+            name = norm.get('name') or norm.get('player') or norm.get('player name') or ''
+            if not name:
+                continue
+
+            existing = Player.query.filter_by(tournament_id=tournament_id, name=name).first()
+            if existing:
+                skipped += 1
+                continue
+
+            commander = norm.get('commander') or norm.get('commanders') or ''
+            decklist_url = norm.get('decklist') or norm.get('decklist_url') or norm.get('url') or norm.get('deck') or ''
+
+            # Auto-fetch commander from Moxfield if URL provided
+            if decklist_url and 'moxfield.com' in decklist_url and not commander:
+                from app.services.moxfield_service import fetch_moxfield_deck
+                fetched, _ = fetch_moxfield_deck(decklist_url)
+                if fetched:
+                    commander = fetched
+
+            player = Player(
+                tournament_id=tournament_id,
+                name=name,
+                commander=commander if commander else None,
+                decklist_url=decklist_url if decklist_url else None
+            )
+            db.session.add(player)
+            added += 1
+
+        db.session.commit()
+        msg = f'Imported {added} player{"s" if added != 1 else ""}'
+        if skipped:
+            msg += f' ({skipped} duplicate{"s" if skipped != 1 else ""} skipped)'
+        flash(msg, 'success')
+
+    except Exception as e:
+        flash(f'Error reading CSV: {str(e)}', 'error')
+
+    return redirect(url_for('player.list_players', tournament_id=tournament_id))
+
+
 @bp.route('/<int:player_id>/edit', methods=['POST'])
 def edit_player(player_id):
     player = Player.query.get_or_404(player_id)
