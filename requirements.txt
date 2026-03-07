@@ -6,6 +6,7 @@ Flask-WTF>=1.2.1
 
 # Database
 SQLAlchemy>=2.0.36
+psycopg2-binary>=2.9.9
 
 # Data processing and export
 pandas>=2.2.0
@@ -18,6 +19,9 @@ WTForms==3.1.1
 
 # Optimization
 PuLP==2.8.0
+
+# Production server
+gunicorn>=21.2.0
 
 # Desktop app wrapper
 flaskwebgui==1.0.6
