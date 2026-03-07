@@ -172,59 +172,72 @@ def build_pairing_history_map(tournament_id):
 
 
 def generate_candidate_pods(pool, points_map, rank_map, history, max_spread=MAX_BRACKET_SPREAD):
-    # Get unique point values sorted descending
     unique_points = sorted(set(points_map[p.id] for p in pool), reverse=True)
 
     if len(unique_points) == 0:
         return []
 
+    # Sort pool by rank for neighbor-based generation
+    sorted_pool = sorted(pool, key=lambda p: rank_map[p.id])
     candidates = set()
 
-    # Sliding window over point brackets
+    # Strategy 1: Neighbor windows (always fast — O(n * C(w,3)))
+    # For each player, consider combos with their nearest 11 neighbors by rank
+    NEIGHBOR_WINDOW = 11
+    for i, player in enumerate(sorted_pool):
+        start = max(0, i - 2)
+        end = min(len(sorted_pool), start + NEIGHBOR_WINDOW)
+        if end - start < 4:
+            continue
+        window = sorted_pool[start:end]
+        for combo in itertools.combinations(window, 4):
+            if player in combo:
+                ids = tuple(sorted(p.id for p in combo))
+                candidates.add(ids)
+                if len(candidates) > CANDIDATE_CAP:
+                    return list(candidates)
+
+    # Strategy 2: Point bracket windows (only for small brackets)
+    MAX_BRACKET_PLAYERS = 16
     for i in range(len(unique_points)):
         window_end = min(i + max_spread, len(unique_points))
         window_points = set(unique_points[i:window_end])
         window_players = [p for p in pool if points_map[p.id] in window_points]
 
-        if len(window_players) < 4:
+        if len(window_players) < 4 or len(window_players) > MAX_BRACKET_PLAYERS:
             continue
 
         for combo in itertools.combinations(window_players, 4):
             ids = tuple(sorted(p.id for p in combo))
             candidates.add(ids)
-
             if len(candidates) > CANDIDATE_CAP:
                 return list(candidates)
 
-    # Check that every player appears in at least one candidate
-    player_ids = {p.id for p in pool}
+    # Ensure every player is covered
     covered = set()
     for c in candidates:
         covered.update(c)
 
-    uncovered = player_ids - covered
-    if uncovered:
-        # Widen spread and add combos for uncovered players
-        all_players_by_id = {p.id: p for p in pool}
-        for pid in uncovered:
-            neighbors = sorted(pool, key=lambda p: abs(points_map[p.id] - points_map[pid]))[:15]
-            if len(neighbors) >= 4:
-                for combo in itertools.combinations(neighbors[:15], 4):
-                    if pid in [p.id for p in combo]:
-                        ids = tuple(sorted(p.id for p in combo))
-                        candidates.add(ids)
-                        if len(candidates) > CANDIDATE_CAP:
-                            return list(candidates)
+    for pid in ({p.id for p in pool} - covered):
+        neighbors = sorted(pool, key=lambda p: abs(rank_map[p.id] - rank_map.get(pid, 0)))[:NEIGHBOR_WINDOW]
+        if len(neighbors) >= 4:
+            for combo in itertools.combinations(neighbors, 4):
+                if pid in [p.id for p in combo]:
+                    ids = tuple(sorted(p.id for p in combo))
+                    candidates.add(ids)
+                    if len(candidates) > CANDIDATE_CAP:
+                        return list(candidates)
 
     return list(candidates)
 
 
 def score_candidate_pod(player_ids, points_map, rank_map, history):
     cost = 0.0
+    n = len(player_ids)
 
     # Repeat cost: 1000 per pair that has played together
-    for i in range(4):
-        for j in range(i + 1, 4):
+    for i in range(n):
+        for j in range(i + 1, n):
             key = (min(player_ids[i], player_ids[j]), max(player_ids[i], player_ids[j]))
             if key in history:
                 cost += 1000 * history[key]
@@ -263,7 +276,7 @@ def solve_ilp(candidates, pool, points_map, rank_map, history):
             x[idx] for idx in range(len(scored)) if pid in scored[idx][0]
         ) == 1
 
-    solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=5)
+    solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=10)
     status = prob.solve(solver)
 
     if pulp.LpStatus[status] != 'Optimal':
