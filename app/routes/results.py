@@ -100,6 +100,13 @@ def submit_and_next(round_id):
 
     from app.services.pairing_service import generate_swiss_pairings
     try:
+        # Ensure current_round reflects actual latest round
+        latest = Round.query.filter_by(tournament_id=tournament.id, is_playoff=False)\
+            .order_by(Round.round_number.desc()).first()
+        if latest and latest.round_number > tournament.current_round:
+            tournament.current_round = latest.round_number
+            db.session.commit()
+
         next_round_number = tournament.current_round + 1
         new_round = generate_swiss_pairings(tournament.id, next_round_number)
         tournament.current_round = next_round_number
