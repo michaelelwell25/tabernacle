@@ -136,6 +136,7 @@
     {% if round.is_complete() and is_latest_round and tournament.status == 'active' %}
     <a href="#" onclick="event.preventDefault();document.getElementById('resultsForm').action='{{ url_for('results.submit_and_next', round_id=round.id) }}';document.getElementById('resultsForm').submit();" class="btn btn-primary">Save &amp; Generate Next Round</a>
     {% endif %}
+    <a href="{{ url_for('round.print_slips', round_id=round.id) }}" class="btn btn-outline" target="_blank">Print Slips</a>
     <a href="{{ url_for('standings.view_standings', tournament_id=tournament.id) }}" class="btn btn-secondary">Standings</a>
   </div>
 </div>

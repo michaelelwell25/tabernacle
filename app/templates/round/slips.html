@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Round {{ round.round_number }} Slips - {{ tournament.name }}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff; }
+    .slip {
+      border: 2px solid #000;
+      border-radius: 4px;
+      padding: 0.6rem 0.75rem;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      margin-bottom: 0.5rem;
+    }
+    .slip-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #999;
+      padding-bottom: 0.35rem;
+      margin-bottom: 0.4rem;
+    }
+    .slip-title { font-weight: 700; font-size: 0.95rem; }
+    .slip-meta { font-size: 0.75rem; color: #555; }
+    .slip-row {
+      display: flex;
+      align-items: center;
+      padding: 0.3rem 0;
+      gap: 0.5rem;
+    }
+    .check-box {
+      width: 16px; height: 16px;
+      border: 2px solid #000;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .player-name {
+      font-size: 0.9rem;
+      font-weight: 500;
+      min-width: 10rem;
+    }
+    .commander {
+      font-size: 0.75rem;
+      color: #666;
+      font-style: italic;
+      flex: 1;
+    }
+    .sig-line {
+      border-bottom: 1px solid #000;
+      min-width: 8rem;
+      flex: 1;
+      height: 1.2rem;
+    }
+    .draw-row {
+      border-top: 1px solid #ccc;
+      margin-top: 0.2rem;
+      padding-top: 0.3rem;
+    }
+    .bye-slip .slip-header { border-bottom-color: #ccc; }
+    .bye-slip { border-style: dashed; border-color: #999; }
+    .bye-label { font-size: 0.8rem; color: #888; padding: 0.2rem 0; }
+    .print-controls {
+      text-align: center;
+      padding: 1rem;
+    }
+    .print-controls button {
+      padding: 0.6rem 1.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      margin: 0 0.25rem;
+    }
+    .print-controls button:hover { background: #555; }
+    .slip-grid {
+      padding: 0.5rem;
+      columns: 2;
+      column-gap: 0.5rem;
+    }
+    @media print {
+      .print-controls { display: none; }
+      body { margin: 0; }
+      .slip-grid { padding: 0.25rem; columns: 2; column-gap: 0.4rem; }
+      .slip { margin-bottom: 0.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="print-controls">
+  <button onclick="window.print()">Print Slips</button>
+  <button onclick="window.history.back()">Back</button>
+</div>
+
+<div class="slip-grid">
+  {% for pod in pods %}
+  <div class="slip {{ 'bye-slip' if pod.is_bye }}">
+    <div class="slip-header">
+      <span class="slip-title">Table {{ pod.table_number }}</span>
+      <span class="slip-meta">{{ tournament.name }} — Round {{ round.round_number }}</span>
+    </div>
+    {% if pod.is_bye %}
+      {% for a in pod.assignments %}
+      <div class="bye-label">{{ a.player.name }} — BYE (+{{ tournament.bye_points }} pts)</div>
+      {% endfor %}
+    {% else %}
+      {% for a in pod.assignments %}
+      <div class="slip-row">
+        <div class="check-box"></div>
+        <span class="player-name">{{ a.player.name }}</span>
+        <span class="commander">{{ a.player.commander or '' }}</span>
+        <div class="sig-line"></div>
+      </div>
+      {% endfor %}
+      <div class="slip-row draw-row">
+        <div class="check-box"></div>
+        <span class="player-name" style="color:#555;">Draw</span>
+        <span class="commander"></span>
+        <div class="sig-line"></div>
+      </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+</body>
+</html>

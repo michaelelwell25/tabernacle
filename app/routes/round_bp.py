@@ -73,6 +73,14 @@ def reset_timer(round_id):
     return redirect(url_for('round.view_round', round_id=round_id))
 
 
+@bp.route('/<int:round_id>/slips')
+def print_slips(round_id):
+    round_obj = Round.query.get_or_404(round_id)
+    tournament = round_obj.tournament
+    pods = round_obj.pods.order_by('pod_number').all()
+    return render_template('round/slips.html', tournament=tournament, round=round_obj, pods=pods)
+
+
 @bp.route('/<int:round_id>/delete', methods=['POST'])
 def delete_round(round_id):
     """Delete a round (and all its pods/results)"""
