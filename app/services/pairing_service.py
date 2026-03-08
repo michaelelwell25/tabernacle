@@ -112,61 +112,127 @@ def _get_short_pod_players(tournament_id):
 
 
 def _solve_with_short_pods(pool, tournament, points_map, rank_map, history):
-    """Handle odd player counts by creating 3-player pods, avoiding repeat short-pod assignments."""
+    """Handle odd player counts with unified ILP over both 3-player and 4-player pods."""
     remainder = len(pool) % 4
-
-    if remainder == 3:
-        num_short_pods = 1
-        short_player_count = 3
-    elif remainder == 2:
-        num_short_pods = 2
-        short_player_count = 6
-    elif remainder == 1:
-        num_short_pods = 1
-        short_player_count = 3
-
-    # Find who's already been in a 3-player pod
+    num_3pods = {3: 1, 2: 2, 1: 3, 0: 0}[remainder]
     had_short = _get_short_pod_players(tournament.id)
 
-    # Pick short pod players from the bottom of standings, preferring those who haven't had a short pod
-    # Separate eligible (never had short) from ineligible (already had short)
-    eligible = [p for p in reversed(pool) if p.id not in had_short]
-    ineligible = [p for p in reversed(pool) if p.id in had_short]
+    sorted_pool = sorted(pool, key=lambda p: rank_map[p.id])
+    NEIGHBOR_WINDOW = max(11, len(sorted_pool))  # for small pools, consider everyone
 
-    # Take from eligible first, fall back to ineligible if not enough
-    short_candidates = eligible[:short_player_count]
-    if len(short_candidates) < short_player_count:
-        short_candidates += ineligible[:short_player_count - len(short_candidates)]
+    # Generate 4-player candidates
+    cand_4_ids = generate_candidate_pods(pool, points_map, rank_map, history)
 
-    short_set = set(p.id for p in short_candidates)
-    main_pool = [p for p in pool if p.id not in short_set]
+    # Generate 3-player candidates
+    cand_3_set = set()
+    for i, player in enumerate(sorted_pool):
+        start = max(0, i - 2)
+        end = min(len(sorted_pool), start + NEIGHBOR_WINDOW)
+        window = sorted_pool[start:end]
+        if len(window) < 3:
+            continue
+        for combo in itertools.combinations(window, 3):
+            if player in combo:
+                ids = tuple(sorted(p.id for p in combo))
+                cand_3_set.add(ids)
 
-    # Build the short pods (groups of 3)
-    short_pods = []
-    for i in range(0, len(short_candidates), 3):
-        short_pods.append(short_candidates[i:i+3])
+    # Score all candidates
+    all_candidates = []
+    for cand_ids in cand_4_ids:
+        cost = score_candidate_pod(cand_ids, points_map, rank_map, history)
+        all_candidates.append((cand_ids, cost, 4))
+    for cand_ids in cand_3_set:
+        cost = score_candidate_pod(cand_ids, points_map, rank_map, history)
+        # Small penalty for players who've already been in short pods
+        cost += sum(50 for pid in cand_ids if pid in had_short)
+        all_candidates.append((cand_ids, cost, 3))
 
-    _log(f"  Short pods: {len(short_candidates)} players in {num_short_pods} short pod(s), {len(main_pool)} in main pool")
+    n4 = sum(1 for c in all_candidates if c[2] == 4)
+    n3 = sum(1 for c in all_candidates if c[2] == 3)
+    _log(f"  Unified ILP: {len(all_candidates)} candidates ({n4} 4-player, {n3} 3-player), need {num_3pods} short pod(s)")
 
-    # Solve main pool (divisible by 4)
-    if len(main_pool) > 0:
-        if HAS_PULP and len(main_pool) <= ILP_PLAYER_CAP:
-            candidates = generate_candidate_pods(main_pool, points_map, rank_map, history)
-            _log(f"  Main pool: {len(candidates)} candidates")
-            if len(candidates) <= CANDIDATE_CAP:
-                pod_assignments = solve_ilp(candidates, main_pool, points_map, rank_map, history)
-                if pod_assignments is None:
-                    _log("  ILP failed for main pool, using greedy")
-                    pod_assignments = greedy_fallback(main_pool, points_map, rank_map, history)
-            else:
-                pod_assignments = greedy_fallback(main_pool, points_map, rank_map, history)
-        else:
-            pod_assignments = greedy_fallback(main_pool, points_map, rank_map, history)
-    else:
-        pod_assignments = []
+    # Try unified ILP
+    if HAS_PULP and len(all_candidates) <= CANDIDATE_CAP:
+        result = _solve_unified_ilp(all_candidates, pool, num_3pods)
+        if result is not None:
+            _log(f"  Unified ILP solved successfully")
+            return result
+        _log(f"  Unified ILP failed, trying combo fallback")
 
-    pod_assignments.extend(short_pods)
-    return pod_assignments
+    # Fallback: try multiple short pod compositions with greedy
+    return _short_pod_combo_fallback(pool, points_map, rank_map, history, had_short, num_3pods)
+
+
+def _solve_unified_ilp(all_candidates, pool, num_3pods):
+    """ILP with mixed 3-player and 4-player candidates."""
+    player_ids = {p.id for p in pool}
+
+    prob = pulp.LpProblem("SwissPairing", pulp.LpMinimize)
+
+    x = {}
+    for idx in range(len(all_candidates)):
+        x[idx] = pulp.LpVariable(f"x_{idx}", cat='Binary')
+
+    # Objective: minimize total cost
+    prob += pulp.lpSum(all_candidates[idx][1] * x[idx] for idx in range(len(all_candidates)))
+
+    # Each player in exactly one pod
+    for pid in player_ids:
+        prob += pulp.lpSum(
+            x[idx] for idx in range(len(all_candidates)) if pid in all_candidates[idx][0]
+        ) == 1
+
+    # Exactly num_3pods 3-player pods selected
+    prob += pulp.lpSum(
+        x[idx] for idx in range(len(all_candidates)) if all_candidates[idx][2] == 3
+    ) == num_3pods
+
+    solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=10)
+    status = prob.solve(solver)
+
+    if pulp.LpStatus[status] != 'Optimal':
+        return None
+
+    result = []
+    player_lookup = {p.id: p for p in pool}
+    for idx in range(len(all_candidates)):
+        if pulp.value(x[idx]) > 0.5:
+            result.append([player_lookup[pid] for pid in all_candidates[idx][0]])
+
+    return result
+
+
+def _short_pod_combo_fallback(pool, points_map, rank_map, history, had_short, num_3pods):
+    """Try multiple short pod compositions, pick the best total."""
+    # Consider bottom half of standings as short pod candidates
+    bottom_n = min(len(pool), max(6, len(pool) // 2))
+    bottom_players = list(reversed(pool))[:bottom_n]
+
+    best_assignment = None
+    best_cost = float('inf')
+
+    for short_combo in itertools.combinations(bottom_players, 3 * num_3pods):
+        short_set = set(p.id for p in short_combo)
+        main = [p for p in pool if p.id not in short_set]
+        if len(main) % 4 != 0:
+            continue
+
+        short_pods = [list(short_combo[i:i + 3]) for i in range(0, len(short_combo), 3)]
+        main_pods = greedy_fallback(main, points_map, rank_map, history) if main else []
+
+        all_pods = main_pods + short_pods
+        total = sum(
+            score_candidate_pod(tuple(sorted(p.id for p in pod)), points_map, rank_map, history)
+            for pod in all_pods
+        )
+        total += sum(50 for pid in short_set if pid in had_short)
+
+        if total < best_cost:
+            best_cost = total
+            best_assignment = all_pods
+
+    _log(f"  Combo fallback: tried {bottom_n}C{3*num_3pods} combos, best cost={best_cost:.1f}")
+    return best_assignment if best_assignment else greedy_fallback(pool, points_map, rank_map, history)
 
 
 def assign_byes(sorted_players, tournament, round_number, points_map):
