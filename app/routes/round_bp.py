@@ -190,8 +190,9 @@ def move_seat(round_id):
     if not assignment:
         return jsonify({'error': 'Player not found in round'}), 404
 
-    pod = assignment.pod
-    all_seats = sorted(pod.assignments, key=lambda a: a.seat_position)
+    # Use .all() since assignments is a dynamic relationship
+    all_seats = PodAssignment.query.filter_by(pod_id=assignment.pod_id)\
+        .order_by(PodAssignment.seat_position).all()
     idx = next((i for i, a in enumerate(all_seats) if a.player_id == player_id), None)
     if idx is None:
         return jsonify({'error': 'Player not found'}), 404
@@ -203,6 +204,9 @@ def move_seat(round_id):
     else:
         return jsonify({'ok': True})  # already at edge
 
-    assignment.seat_position, swap_with.seat_position = swap_with.seat_position, assignment.seat_position
+    # Use temp to avoid unique constraint issues
+    old_pos = assignment.seat_position
+    assignment.seat_position = swap_with.seat_position
+    swap_with.seat_position = old_pos
     db.session.commit()
     return jsonify({'ok': True})
