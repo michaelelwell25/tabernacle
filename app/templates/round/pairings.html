@@ -216,6 +216,8 @@ function moveSeat(playerId, direction) {
 
 document.addEventListener('click', function(e) {
   if (!swapMode) return;
+  // Don't intercept seat button clicks
+  if (e.target.closest('.seat-btn')) return;
   const row = e.target.closest('.pod-player-wrap[data-pid]');
   if (!row) return;
 
