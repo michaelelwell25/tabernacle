@@ -117,6 +117,18 @@
     </div>
     {% endif %}
 
+    <!-- Call Judge -->
+    {% if tournament.status in ('active', 'playoffs') and tournament.current_round > 0 %}
+    <div class="card" style="max-width:28rem;margin:0 auto 2rem;padding:1.25rem;text-align:center;">
+      <button id="callJudgeBtn" class="btn btn-danger btn-lg" style="width:100%;font-size:1.1rem;" onclick="callJudge()">Call Judge</button>
+      <div id="judgeCallStatus" style="margin-top:0.5rem;font-size:0.85rem;"></div>
+      <div id="judgeReasonBox" style="display:none;margin-top:0.75rem;">
+        <input type="text" id="judgeReason" class="form-control" placeholder="Brief reason (optional)" style="margin-bottom:0.5rem;">
+        <button class="btn btn-danger" style="width:100%;" onclick="submitJudgeCall()">Confirm Call</button>
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Round History (auto-shown for saved player) -->
     {% if tournament.current_round and tournament.current_round > 0 %}
     <div id="roundHistory" class="card" style="max-width:28rem;margin:0 auto 2rem;padding:1.25rem;display:none;">
@@ -258,6 +270,50 @@ const roundHistory = {{ round_history|tojson }};
       '<div><span class="badge ' + b + '">' + label + pts + '</span></div></div>';
   }).join('');
 })();
+</script>
+<script>
+function callJudge() {
+  const saved = localStorage.getItem('tabernacle_player_{{ tournament.id }}');
+  if (!saved) {
+    document.getElementById('judgeCallStatus').innerHTML = '<span style="color:var(--error)">Register first so we know who you are</span>';
+    return;
+  }
+  document.getElementById('judgeReasonBox').style.display = 'block';
+  document.getElementById('callJudgeBtn').style.display = 'none';
+}
+
+async function submitJudgeCall() {
+  const saved = localStorage.getItem('tabernacle_player_{{ tournament.id }}');
+  const reason = document.getElementById('judgeReason').value.trim();
+  const status = document.getElementById('judgeCallStatus');
+
+  // Find table number from seat data
+  let table = null;
+  if (typeof seatData !== 'undefined') {
+    const match = seatData.find(s => s.name.toLowerCase() === saved.toLowerCase());
+    if (match) table = match.table;
+  }
+
+  const body = new FormData();
+  body.append('player_name', saved);
+  if (table) body.append('table_number', table);
+  if (reason) body.append('reason', reason);
+
+  try {
+    const resp = await fetch('/judge/{{ tournament.id }}/call', { method: 'POST', body });
+    const data = await resp.json();
+    if (resp.ok) {
+      document.getElementById('judgeReasonBox').style.display = 'none';
+      status.innerHTML = '<span style="color:var(--success);font-weight:600;">Judge called! Stay at your table.</span>';
+    } else {
+      document.getElementById('judgeReasonBox').style.display = 'none';
+      document.getElementById('callJudgeBtn').style.display = '';
+      status.innerHTML = '<span style="color:var(--warning)">' + (data.error || 'Could not call judge') + '</span>';
+    }
+  } catch (e) {
+    status.innerHTML = '<span style="color:var(--error)">Network error — try again</span>';
+  }
+}
 </script>
 <script>setInterval(()=>fetch('/health'),240000);</script>
 <style>

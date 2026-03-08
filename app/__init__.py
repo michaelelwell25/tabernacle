@@ -8,7 +8,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 
 # Public routes that don't need auth
-PUBLIC_ENDPOINTS = {'player.join_tournament', 'player.moxfield_fetch', 'auth.login', 'health', 'static'}
+PUBLIC_ENDPOINTS = {'player.join_tournament', 'player.moxfield_fetch', 'judge.create_call', 'auth.login', 'health', 'static'}
 
 
 def create_app(config_name='development'):
@@ -25,7 +25,7 @@ def create_app(config_name='development'):
     app.register_blueprint(auth_bp)
 
     # App blueprints
-    from app.routes import tournament, player, round_bp, results, standings, export_bp, playoff
+    from app.routes import tournament, player, round_bp, results, standings, export_bp, playoff, judge
     app.register_blueprint(tournament.bp)
     app.register_blueprint(player.bp)
     app.register_blueprint(round_bp.bp)
@@ -33,6 +33,7 @@ def create_app(config_name='development'):
     app.register_blueprint(standings.bp)
     app.register_blueprint(export_bp.bp)
     app.register_blueprint(playoff.bp)
+    app.register_blueprint(judge.bp)
 
     from app import models
 

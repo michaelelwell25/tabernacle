@@ -74,6 +74,7 @@
     </form>
     <a href="{{ url_for('player.list_players', tournament_id=tournament.id) }}" class="btn btn-secondary">Players</a>
     <a href="{{ url_for('standings.view_standings', tournament_id=tournament.id) }}" class="btn btn-secondary">Standings</a>
+    <a href="{{ url_for('judge.judge_queue', tournament_id=tournament.id) }}" class="btn btn-outline">Judge Queue</a>
     {% if current_round %}
     <a href="{{ url_for('round.view_round', round_id=current_round.id) }}" class="btn btn-outline">Current Pairings</a>
     {% endif %}

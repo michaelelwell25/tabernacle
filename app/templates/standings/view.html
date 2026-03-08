@@ -30,6 +30,7 @@
         <th class="text-center">OGW%</th>
         <th class="text-center">Played</th>
         <th>Status</th>
+        {% if projections %}<th>Projection</th>{% endif %}
       </tr>
     </thead>
     <tbody>
@@ -58,6 +59,19 @@
           <span class="badge badge-red">Dropped</span>
           {% endif %}
         </td>
+        {% if projections %}
+        <td>
+          {% if s['player'].id in projections %}
+            {% if projections[s['player'].id] == 'clinched' %}
+            <span class="badge badge-green">Clinched</span>
+            {% elif projections[s['player'].id] == 'win-and-in' %}
+            <span class="badge badge-blue">Win & In</span>
+            {% elif projections[s['player'].id] == 'eliminated' %}
+            <span class="badge badge-red">Eliminated</span>
+            {% endif %}
+          {% endif %}
+        </td>
+        {% endif %}
       </tr>
       {% endfor %}
     </tbody>
