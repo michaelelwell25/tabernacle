@@ -161,10 +161,49 @@ def join_tournament(tournament_id):
                 }
                 round_history[pname].append(entry)
 
+    # Build pod pairings data for current round display
+    pods_data = []
+    if current_round:
+        for pod in current_round.pods.order_by('pod_number').all():
+            pod_info = {
+                'table': pod.table_number,
+                'is_bye': pod.is_bye,
+                'status': pod.status,
+                'players': []
+            }
+            for a in sorted(pod.assignments, key=lambda x: x.seat_position):
+                pod_info['players'].append({
+                    'name': a.player.name,
+                    'commander': a.player.commander or '',
+                    'seat': a.seat_position
+                })
+            pods_data.append(pod_info)
+
+    # Build standings data
+    standings_data = []
+    projections_data = {}
+    from app.services.standings_service import calculate_standings
+    if tournament.current_round and tournament.current_round > 0:
+        standings = calculate_standings(tournament)
+        from app.routes.standings import _calculate_projections
+        projections_data = _calculate_projections(tournament, standings)
+        for s in standings:
+            standings_data.append({
+                'name': s['player'].name,
+                'points': s['points'],
+                'omw': s['omw_percentage'],
+                'gw': s['gw_percentage'],
+                'matches': s['matches_played'],
+                'dropped': s['player'].dropped,
+                'player_id': s['player'].id,
+                'projection': projections_data.get(s['player'].id, ''),
+            })
+
     return render_template('player/join.html', tournament=tournament, players=players,
                            player_count=player_count, can_register=can_register,
                            seat_data=seat_data, round_history=round_history,
-                           timer_end=timer_end)
+                           timer_end=timer_end, pods_data=pods_data,
+                           standings_data=standings_data)
 
 
 @bp.route('/tournament/<int:tournament_id>/import-csv', methods=['POST'])
