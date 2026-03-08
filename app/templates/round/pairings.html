@@ -152,6 +152,7 @@
     <p>This will remove the round and all its pairings and results. This cannot be undone.</p>
     <div class="btn-group" style="justify-content:center;">
       <form method="POST" action="{{ url_for('round.delete_round', round_id=round.id) }}">
+        <input type="hidden" name="confirm" value="yes">
         <button type="submit" class="btn btn-danger">Yes, Delete</button>
       </form>
       <button class="btn btn-secondary" onclick="document.getElementById('deleteRoundConfirm').classList.remove('open')">Cancel</button>

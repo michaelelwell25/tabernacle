@@ -93,10 +93,10 @@ def delete_round(round_id):
         flash('Can only delete the most recent round', 'error')
         return redirect(url_for('round.list_rounds', tournament_id=tournament.id))
 
-    # Check if any results have been entered
+    # Check if any non-bye pods have results entered
     has_results = False
     for pod in round_obj.pods:
-        if pod.has_results():
+        if not pod.is_bye and pod.has_results():
             has_results = True
             break
 
