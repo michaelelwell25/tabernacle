@@ -171,3 +171,38 @@ def swap_players(round_id):
     db.session.commit()
     flash('Players swapped!', 'success')
     return redirect(url_for('round.view_round', round_id=round_id))
+
+
+@bp.route('/<int:round_id>/move-seat', methods=['POST'])
+def move_seat(round_id):
+    """Move a player up or down within their pod (swap seat positions)."""
+    from flask import jsonify
+    round_obj = Round.query.get_or_404(round_id)
+    player_id = request.form.get('player_id', type=int)
+    direction = request.form.get('direction')  # 'up' or 'down'
+
+    if not player_id or direction not in ('up', 'down'):
+        return jsonify({'error': 'Invalid request'}), 400
+
+    assignment = PodAssignment.query.join(Pod).filter(
+        Pod.round_id == round_id, PodAssignment.player_id == player_id
+    ).first()
+    if not assignment:
+        return jsonify({'error': 'Player not found in round'}), 404
+
+    pod = assignment.pod
+    all_seats = sorted(pod.assignments, key=lambda a: a.seat_position)
+    idx = next((i for i, a in enumerate(all_seats) if a.player_id == player_id), None)
+    if idx is None:
+        return jsonify({'error': 'Player not found'}), 404
+
+    if direction == 'up' and idx > 0:
+        swap_with = all_seats[idx - 1]
+    elif direction == 'down' and idx < len(all_seats) - 1:
+        swap_with = all_seats[idx + 1]
+    else:
+        return jsonify({'ok': True})  # already at edge
+
+    assignment.seat_position, swap_with.seat_position = swap_with.seat_position, assignment.seat_position
+    db.session.commit()
+    return jsonify({'ok': True})
