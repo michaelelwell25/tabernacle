@@ -99,7 +99,7 @@
         {% endfor %}
       {% else %}
         {% for pp in pod.assignments %}
-        <label class="pod-player result-pick" style="cursor:pointer;">
+        <label class="pod-player result-pick" style="cursor:pointer;" data-pid="{{ pp.player_id }}" data-podid="{{ pod.id }}" data-pname="{{ pp.player.name }}">
           <div class="player-info">
             <input type="radio" name="result_{{ pod.id }}" value="{{ pp.player_id }}"
               style="accent-color:var(--success);"
@@ -136,6 +136,7 @@
     {% endif %}
     <a href="{{ url_for('round.print_slips', round_id=round.id) }}" class="btn btn-outline" target="_blank">Print Slips</a>
     <a href="{{ url_for('standings.view_standings', tournament_id=tournament.id) }}" class="btn btn-secondary">Standings</a>
+    <button type="button" class="btn btn-outline" onclick="toggleSwapMode()">Swap Players</button>
   </div>
 </div>
 {% endif %}
@@ -160,6 +161,70 @@
   </div>
 </div>
 {% endif %}
+
+<!-- Swap Players -->
+<form method="POST" action="{{ url_for('round.swap_players', round_id=round.id) }}" id="swapForm" style="display:none;">
+  <input type="hidden" name="player1_id" id="swap1">
+  <input type="hidden" name="player2_id" id="swap2">
+</form>
+<div id="swapBanner" class="swap-banner" style="display:none;">
+  <span id="swapStatus">Click a player to select, then click another player in a different pod to swap</span>
+  <button class="btn btn-outline btn-sm" onclick="cancelSwap()">Cancel</button>
+</div>
+
+<script>
+let swapMode = false;
+let selected1 = null;
+
+function toggleSwapMode() {
+  swapMode = !swapMode;
+  document.getElementById('swapBanner').style.display = swapMode ? 'flex' : 'none';
+  if (!swapMode) cancelSwap();
+  document.querySelectorAll('.pod-player').forEach(el => {
+    if (swapMode && el.dataset.pid) el.classList.add('swappable');
+    else el.classList.remove('swappable', 'swap-selected');
+  });
+}
+
+function cancelSwap() {
+  swapMode = false;
+  selected1 = null;
+  document.getElementById('swapBanner').style.display = 'none';
+  document.getElementById('swapStatus').textContent = 'Click a player to select, then click another in a different pod to swap';
+  document.querySelectorAll('.pod-player').forEach(el => el.classList.remove('swappable', 'swap-selected'));
+}
+
+document.addEventListener('click', function(e) {
+  if (!swapMode) return;
+  const row = e.target.closest('.pod-player[data-pid]');
+  if (!row) return;
+
+  const pid = row.dataset.pid;
+  const podId = row.dataset.podid;
+
+  if (!selected1) {
+    selected1 = { pid, podId, el: row };
+    row.classList.add('swap-selected');
+    document.getElementById('swapStatus').textContent = row.dataset.pname + ' selected — now click a player in another pod';
+    e.preventDefault();
+    e.stopPropagation();
+  } else if (selected1.pid === pid) {
+    selected1.el.classList.remove('swap-selected');
+    selected1 = null;
+    document.getElementById('swapStatus').textContent = 'Click a player to select, then click another in a different pod to swap';
+    e.preventDefault();
+    e.stopPropagation();
+  } else if (selected1.podId === podId) {
+    // same pod — ignore
+    e.preventDefault();
+    e.stopPropagation();
+  } else {
+    document.getElementById('swap1').value = selected1.pid;
+    document.getElementById('swap2').value = pid;
+    document.getElementById('swapForm').submit();
+  }
+}, true);
+</script>
 
 <script>setInterval(()=>fetch('/health'),240000);</script>
 <style>
@@ -190,6 +255,17 @@
   transition: color 0.15s, background 0.15s;
 }
 .btn-clear:hover { color: var(--warning); background: var(--bg-hover); }
+.swap-banner {
+  display: flex; align-items: center; gap: 1rem; justify-content: space-between;
+  background: var(--accent); color: #fff; padding: 0.6rem 1.25rem;
+  border-radius: var(--radius); margin-bottom: 1rem; font-size: 0.9rem;
+}
+.swap-banner .btn-outline { color: #fff; border-color: rgba(255,255,255,0.5); }
+.swappable { cursor: crosshair !important; }
+.swappable:hover { background: rgba(var(--accent-rgb, 99,102,241), 0.15) !important; }
+.swap-selected { background: var(--accent) !important; color: #fff !important; border-radius: var(--radius); }
+.swap-selected .commander-tag { color: rgba(255,255,255,0.7) !important; }
+.swap-selected .pick-label { display: none; }
 @media (max-width: 640px) {
   .pod-player { padding: 0.6rem 0.85rem; }
   .pod-player .player-info { flex-wrap: wrap; gap: 0.25rem; }

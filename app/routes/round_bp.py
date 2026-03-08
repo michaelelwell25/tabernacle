@@ -3,6 +3,8 @@ from datetime import datetime
 from app import db
 from app.models.tournament import Tournament
 from app.models.round import Round
+from app.models.pod import Pod
+from app.models.pod_assignment import PodAssignment
 from app.models.pairing_history import PairingHistory
 from app.models.bye_history import ByeHistory
 from app.services.pairing_service import generate_swiss_pairings
@@ -122,3 +124,50 @@ def delete_round(round_id):
 
     flash(f'Round {round_number} deleted', 'success')
     return redirect(url_for('tournament.view_tournament', tournament_id=tournament.id))
+
+
+@bp.route('/<int:round_id>/swap', methods=['POST'])
+def swap_players(round_id):
+    """Swap two players between pods and re-record pairing history."""
+    round_obj = Round.query.get_or_404(round_id)
+    tournament = round_obj.tournament
+    p1 = request.form.get('player1_id', type=int)
+    p2 = request.form.get('player2_id', type=int)
+
+    if not p1 or not p2 or p1 == p2:
+        flash('Select two different players to swap', 'error')
+        return redirect(url_for('round.view_round', round_id=round_id))
+
+    a1 = PodAssignment.query.join(Pod).filter(
+        Pod.round_id == round_id, PodAssignment.player_id == p1
+    ).first()
+    a2 = PodAssignment.query.join(Pod).filter(
+        Pod.round_id == round_id, PodAssignment.player_id == p2
+    ).first()
+
+    if not a1 or not a2:
+        flash('Could not find both players in this round', 'error')
+        return redirect(url_for('round.view_round', round_id=round_id))
+
+    if a1.pod_id == a2.pod_id:
+        flash('Players are already in the same pod', 'error')
+        return redirect(url_for('round.view_round', round_id=round_id))
+
+    # Swap player IDs on the assignments
+    a1.player_id, a2.player_id = a2.player_id, a1.player_id
+
+    # Re-record pairing history for this round
+    PairingHistory.query.filter_by(
+        tournament_id=tournament.id,
+        round_number=round_obj.round_number
+    ).delete()
+    db.session.flush()
+
+    for pod in round_obj.pods:
+        if not pod.is_bye:
+            players = [a.player for a in pod.assignments]
+            PairingHistory.record_pod_pairings(players, tournament.id, round_obj.round_number)
+
+    db.session.commit()
+    flash('Players swapped!', 'success')
+    return redirect(url_for('round.view_round', round_id=round_id))
