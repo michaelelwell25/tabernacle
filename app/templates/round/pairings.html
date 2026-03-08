@@ -99,22 +99,24 @@
         {% endfor %}
       {% else %}
         {% for pp in pod.assignments %}
-        <label class="pod-player result-pick" style="cursor:pointer;" data-pid="{{ pp.player_id }}" data-podid="{{ pod.id }}" data-pname="{{ pp.player.name }}">
-          <div class="player-info">
-            <span class="seat-controls" style="display:none;">
-              <button type="button" class="seat-btn" onclick="event.preventDefault();event.stopPropagation();moveSeat({{ pp.player_id }},'up')">&#9650;</button>
-              <button type="button" class="seat-btn" onclick="event.preventDefault();event.stopPropagation();moveSeat({{ pp.player_id }},'down')">&#9660;</button>
-            </span>
-            <input type="radio" name="result_{{ pod.id }}" value="{{ pp.player_id }}"
-              style="accent-color:var(--success);"
-              {{ 'checked' if pp.placement == 1 }}>
-            <span>{{ pp.player.name }}</span>
-            {% if pp.player.commander %}
-            <span class="commander-tag">{{ pp.player.commander }}</span>
-            {% endif %}
-          </div>
-          <span class="pick-label badge badge-green" style="font-size:0.7rem;">WINNER</span>
-        </label>
+        <div class="pod-player-wrap" data-pid="{{ pp.player_id }}" data-podid="{{ pod.id }}" data-pname="{{ pp.player.name }}">
+          <span class="seat-controls" style="display:none;">
+            <button type="button" class="seat-btn" onclick="moveSeat({{ pp.player_id }},'up')">&#9650;</button>
+            <button type="button" class="seat-btn" onclick="moveSeat({{ pp.player_id }},'down')">&#9660;</button>
+          </span>
+          <label class="pod-player result-pick" style="cursor:pointer;flex:1;margin:0;">
+            <div class="player-info">
+              <input type="radio" name="result_{{ pod.id }}" value="{{ pp.player_id }}"
+                style="accent-color:var(--success);"
+                {{ 'checked' if pp.placement == 1 }}>
+              <span>{{ pp.player.name }}</span>
+              {% if pp.player.commander %}
+              <span class="commander-tag">{{ pp.player.commander }}</span>
+              {% endif %}
+            </div>
+            <span class="pick-label badge badge-green" style="font-size:0.7rem;">WINNER</span>
+          </label>
+        </div>
         {% endfor %}
         <label class="pod-player result-pick draw-pick" style="cursor:pointer;border-top:1px solid var(--border);padding-top:0.5rem;margin-top:0.25rem;">
           <div class="player-info">
@@ -185,7 +187,7 @@ function toggleSwapMode() {
   document.getElementById('swapBanner').style.display = swapMode ? 'flex' : 'none';
   document.getElementById('editBtn').textContent = swapMode ? 'Done Editing' : 'Edit Pairings';
   if (!swapMode) { selected1 = null; }
-  document.querySelectorAll('.pod-player').forEach(el => {
+  document.querySelectorAll('.pod-player-wrap').forEach(el => {
     if (swapMode && el.dataset.pid) el.classList.add('swappable');
     else el.classList.remove('swappable', 'swap-selected');
   });
@@ -200,7 +202,7 @@ function cancelSwap() {
   document.getElementById('swapBanner').style.display = 'none';
   document.getElementById('editBtn').textContent = 'Edit Pairings';
   document.getElementById('swapStatus').textContent = 'Click players to swap between pods. Use arrows to reorder seats.';
-  document.querySelectorAll('.pod-player').forEach(el => el.classList.remove('swappable', 'swap-selected'));
+  document.querySelectorAll('.pod-player-wrap').forEach(el => el.classList.remove('swappable', 'swap-selected'));
   document.querySelectorAll('.seat-controls').forEach(el => { el.style.display = 'none'; });
 }
 
@@ -214,7 +216,7 @@ function moveSeat(playerId, direction) {
 
 document.addEventListener('click', function(e) {
   if (!swapMode) return;
-  const row = e.target.closest('.pod-player[data-pid]');
+  const row = e.target.closest('.pod-player-wrap[data-pid]');
   if (!row) return;
 
   const pid = row.dataset.pid;
@@ -282,6 +284,12 @@ document.addEventListener('click', function(e) {
 .swappable { cursor: crosshair !important; }
 .swappable:hover { background: rgba(var(--accent-rgb, 99,102,241), 0.15) !important; }
 .swap-selected { background: var(--accent) !important; color: #fff !important; border-radius: var(--radius); }
+.swap-selected .commander-tag { color: rgba(255,255,255,0.7) !important; }
+.pod-player-wrap {
+  display: flex; align-items: center; gap: 0;
+}
+.swap-selected { background: var(--accent) !important; border-radius: var(--radius); }
+.swap-selected .pod-player { color: #fff !important; }
 .swap-selected .commander-tag { color: rgba(255,255,255,0.7) !important; }
 .swap-selected .pick-label { display: none; }
 .seat-controls {
