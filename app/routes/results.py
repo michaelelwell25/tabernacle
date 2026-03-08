@@ -45,7 +45,8 @@ def _save_results(round_obj):
                     assignment.placement = None
                     assignment.points_earned = 0
 
-        pod.status = 'completed'
+        if result:
+            pod.status = 'completed'
 
     db.session.commit()
 

@@ -80,9 +80,7 @@
       <span class="badge badge-gold">BYE</span>
       {% elif pod.status == 'completed' %}
       <span class="badge badge-green">Done</span>
-      <form method="POST" action="{{ url_for('results.clear_pod_result', pod_id=pod.id) }}" class="inline-form" style="margin-left:0.4rem;">
-        <button type="submit" class="btn-clear" title="Clear result">&#x21ba;</button>
-      </form>
+      <button type="button" class="btn-clear" title="Clear result" onclick="fetch('{{ url_for('results.clear_pod_result', pod_id=pod.id) }}',{method:'POST'}).then(()=>location.reload())">&#x21ba;</button>
       {% endif %}
     </div>
     <div class="pod-body">
