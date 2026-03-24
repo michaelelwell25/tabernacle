@@ -6,6 +6,7 @@ from app.models.pod_assignment import PodAssignment
 from app.models.pairing_history import PairingHistory
 from app.models.bye_history import ByeHistory
 from app.models.judge_call import JudgeCall
+from app.models.seat_history import SeatHistory
 
 __all__ = [
     'Tournament',
@@ -16,4 +17,5 @@ __all__ = [
     'PairingHistory',
     'ByeHistory',
     'JudgeCall',
+    'SeatHistory',
 ]

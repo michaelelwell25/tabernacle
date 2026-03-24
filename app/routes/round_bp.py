@@ -7,6 +7,7 @@ from app.models.pod import Pod
 from app.models.pod_assignment import PodAssignment
 from app.models.pairing_history import PairingHistory
 from app.models.bye_history import ByeHistory
+from app.models.seat_history import SeatHistory
 from app.services.pairing_service import generate_swiss_pairings
 
 bp = Blueprint('round', __name__, url_prefix='/rounds')
@@ -117,6 +118,10 @@ def delete_round(round_id):
         tournament_id=tournament.id,
         round_number=round_number
     ).delete()
+    SeatHistory.query.filter_by(
+        tournament_id=tournament.id,
+        round_number=round_number
+    ).delete()
 
     db.session.delete(round_obj)
     tournament.current_round = max(0, tournament.current_round - 1)
@@ -157,16 +162,25 @@ def swap_players(round_id):
     a1.player_id, a2.player_id = a2.player_id, a1.player_id
 
     # Re-record pairing history for this round
+    rn = round_obj.round_number
     PairingHistory.query.filter_by(
         tournament_id=tournament.id,
-        round_number=round_obj.round_number
+        round_number=rn
+    ).delete()
+
+    # Re-record seat history for this round
+    SeatHistory.query.filter_by(
+        tournament_id=tournament.id,
+        round_number=rn
     ).delete()
     db.session.flush()
 
     for pod in round_obj.pods:
         if not pod.is_bye:
             players = [a.player for a in pod.assignments]
-            PairingHistory.record_pod_pairings(players, tournament.id, round_obj.round_number)
+            PairingHistory.record_pod_pairings(players, tournament.id, rn)
+            for a in pod.assignments:
+                SeatHistory.record_seat(a.player_id, tournament.id, rn, a.seat_position)
 
     db.session.commit()
     flash('Players swapped!', 'success')
@@ -208,5 +222,16 @@ def move_seat(round_id):
     old_pos = assignment.seat_position
     assignment.seat_position = swap_with.seat_position
     swap_with.seat_position = old_pos
+
+    # Update seat history to reflect the manual swap
+    tournament_id = round_obj.tournament_id
+    rn = round_obj.round_number
+    for a in [assignment, swap_with]:
+        sh = SeatHistory.query.filter_by(
+            tournament_id=tournament_id, player_id=a.player_id, round_number=rn
+        ).first()
+        if sh:
+            sh.seat_position = a.seat_position
+
     db.session.commit()
     return jsonify({'ok': True})

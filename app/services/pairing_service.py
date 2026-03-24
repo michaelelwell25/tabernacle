@@ -8,6 +8,7 @@ from app.models.pod import Pod
 from app.models.pod_assignment import PodAssignment
 from app.models.pairing_history import PairingHistory
 from app.models.bye_history import ByeHistory
+from app.models.seat_history import SeatHistory
 from app.services.standings_service import calculate_standings
 
 try:
@@ -34,6 +35,57 @@ def _count_repeats(pod_assignments, history):
 MAX_BRACKET_SPREAD = 3
 CANDIDATE_CAP = 50000
 ILP_PLAYER_CAP = 56  # Above this, use greedy (ILP too slow on shared CPU)
+SEAT_WEIGHT = 100  # Penalty per unsatisfiable seat assignment in a candidate pod
+
+
+def _build_seat_avail(tournament_id, player_ids, pod_size=4):
+    """Precompute available seats for each player based on current cycle.
+    Returns {player_id: frozenset_of_available_seats}.
+    """
+    seat_hist = SeatHistory.bulk_seat_history(tournament_id, player_ids)
+    all_seats = frozenset(range(1, pod_size + 1))
+    avail = {}
+    for pid in player_ids:
+        used = _current_cycle_used(seat_hist.get(pid, []), pod_size)
+        avail[pid] = all_seats - used if used else all_seats
+    return avail
+
+
+def _seat_conflict_cost(player_ids, seat_avail):
+    """Count minimum unsatisfied players using augmenting-path matching.
+    Much faster than trying all permutations for small pod sizes.
+    """
+    if seat_avail is None:
+        return 0
+    seats = list(range(1, len(player_ids) + 1))
+    pids = list(player_ids)
+    # Build adjacency: player index -> set of seat indices they can take
+    adj = []
+    for pid in pids:
+        avail = seat_avail.get(pid)
+        if avail:
+            adj.append(set(s - 1 for s in avail if s <= len(pids)))
+        else:
+            adj.append(set(range(len(pids))))  # no history = all seats OK
+
+    # Hungarian-style augmenting path matching for max bipartite matching
+    match_seat = [-1] * len(seats)  # seat -> player index
+
+    def try_assign(player_idx, visited):
+        for seat_idx in adj[player_idx]:
+            if seat_idx in visited:
+                continue
+            visited.add(seat_idx)
+            if match_seat[seat_idx] == -1 or try_assign(match_seat[seat_idx], visited):
+                match_seat[seat_idx] = player_idx
+                return True
+        return False
+
+    matched = 0
+    for i in range(len(pids)):
+        matched += try_assign(i, set())
+
+    return len(pids) - matched
 
 
 def generate_swiss_pairings(tournament_id, round_number):
@@ -60,6 +112,9 @@ def generate_swiss_pairings(tournament_id, round_number):
 
     # Build pairing history for O(1) lookups
     history = build_pairing_history_map(tournament_id)
+
+    # Build seat availability map for seat diversity
+    seat_avail = _build_seat_avail(tournament_id, [p.id for p in sorted_players])
     _log(f"Round {round_number}: {len(pool)} players in pool, {len(history)} pair-history entries, HAS_PULP={HAS_PULP}")
 
     # Generate candidate pods and solve
@@ -70,25 +125,25 @@ def generate_swiss_pairings(tournament_id, round_number):
         pod_assignments = [pool]
     else:
         if not tournament.allow_byes and len(pool) % 4 != 0:
-            pod_assignments = _solve_with_short_pods(pool, tournament, points_map, rank_map, history)
+            pod_assignments = _solve_with_short_pods(pool, tournament, points_map, rank_map, history, seat_avail)
             method = 'short-pods'
         else:
             if HAS_PULP and len(pool) <= ILP_PLAYER_CAP:
                 candidates = generate_candidate_pods(pool, points_map, rank_map, history)
                 _log(f"  Generated {len(candidates)} candidates (cap={CANDIDATE_CAP})")
                 if len(candidates) <= CANDIDATE_CAP:
-                    pod_assignments = solve_ilp(candidates, pool, points_map, rank_map, history)
+                    pod_assignments = solve_ilp(candidates, pool, points_map, rank_map, history, seat_avail)
                     if pod_assignments is None:
                         _log("  ILP returned None, falling back to greedy")
-                        pod_assignments = greedy_fallback(pool, points_map, rank_map, history)
+                        pod_assignments = greedy_fallback(pool, points_map, rank_map, history, seat_avail)
                         method = 'greedy (ILP failed)'
                     else:
                         method = 'ILP'
                 else:
-                    pod_assignments = greedy_fallback(pool, points_map, rank_map, history)
+                    pod_assignments = greedy_fallback(pool, points_map, rank_map, history, seat_avail)
                     method = 'greedy (too many candidates)'
             else:
-                pod_assignments = greedy_fallback(pool, points_map, rank_map, history)
+                pod_assignments = greedy_fallback(pool, points_map, rank_map, history, seat_avail)
                 method = 'greedy (no PuLP or too many players)'
 
     repeats = _count_repeats(pod_assignments, history)
@@ -111,7 +166,7 @@ def _get_short_pod_players(tournament_id):
     return short_pod_players
 
 
-def _solve_with_short_pods(pool, tournament, points_map, rank_map, history):
+def _solve_with_short_pods(pool, tournament, points_map, rank_map, history, seat_avail=None):
     """Handle odd player counts with unified ILP over both 3-player and 4-player pods."""
     remainder = len(pool) % 4
     num_3pods = {3: 1, 2: 2, 1: 3, 0: 0}[remainder]
@@ -139,10 +194,10 @@ def _solve_with_short_pods(pool, tournament, points_map, rank_map, history):
     # Score all candidates
     all_candidates = []
     for cand_ids in cand_4_ids:
-        cost = score_candidate_pod(cand_ids, points_map, rank_map, history)
+        cost = score_candidate_pod(cand_ids, points_map, rank_map, history, seat_avail)
         all_candidates.append((cand_ids, cost, 4))
     for cand_ids in cand_3_set:
-        cost = score_candidate_pod(cand_ids, points_map, rank_map, history)
+        cost = score_candidate_pod(cand_ids, points_map, rank_map, history, seat_avail)
         # Small penalty for players who've already been in short pods
         cost += sum(50 for pid in cand_ids if pid in had_short)
         all_candidates.append((cand_ids, cost, 3))
@@ -160,7 +215,7 @@ def _solve_with_short_pods(pool, tournament, points_map, rank_map, history):
         _log(f"  Unified ILP failed, trying combo fallback")
 
     # Fallback: try multiple short pod compositions with greedy
-    return _short_pod_combo_fallback(pool, points_map, rank_map, history, had_short, num_3pods)
+    return _short_pod_combo_fallback(pool, points_map, rank_map, history, had_short, num_3pods, seat_avail)
 
 
 def _solve_unified_ilp(all_candidates, pool, num_3pods):
@@ -202,7 +257,7 @@ def _solve_unified_ilp(all_candidates, pool, num_3pods):
     return result
 
 
-def _short_pod_combo_fallback(pool, points_map, rank_map, history, had_short, num_3pods):
+def _short_pod_combo_fallback(pool, points_map, rank_map, history, had_short, num_3pods, seat_avail=None):
     """Try multiple short pod compositions, pick the best total."""
     # Consider bottom half of standings as short pod candidates
     bottom_n = min(len(pool), max(6, len(pool) // 2))
@@ -218,11 +273,11 @@ def _short_pod_combo_fallback(pool, points_map, rank_map, history, had_short, nu
             continue
 
         short_pods = [list(short_combo[i:i + 3]) for i in range(0, len(short_combo), 3)]
-        main_pods = greedy_fallback(main, points_map, rank_map, history) if main else []
+        main_pods = greedy_fallback(main, points_map, rank_map, history, seat_avail) if main else []
 
         all_pods = main_pods + short_pods
         total = sum(
-            score_candidate_pod(tuple(sorted(p.id for p in pod)), points_map, rank_map, history)
+            score_candidate_pod(tuple(sorted(p.id for p in pod)), points_map, rank_map, history, seat_avail)
             for pod in all_pods
         )
         total += sum(50 for pid in short_set if pid in had_short)
@@ -232,7 +287,7 @@ def _short_pod_combo_fallback(pool, points_map, rank_map, history, had_short, nu
             best_assignment = all_pods
 
     _log(f"  Combo fallback: tried {bottom_n}C{3*num_3pods} combos, best cost={best_cost:.1f}")
-    return best_assignment if best_assignment else greedy_fallback(pool, points_map, rank_map, history)
+    return best_assignment if best_assignment else greedy_fallback(pool, points_map, rank_map, history, seat_avail)
 
 
 def assign_byes(sorted_players, tournament, round_number, points_map):
@@ -337,7 +392,7 @@ def generate_candidate_pods(pool, points_map, rank_map, history, max_spread=MAX_
     return list(candidates)
 
 
-def score_candidate_pod(player_ids, points_map, rank_map, history):
+def score_candidate_pod(player_ids, points_map, rank_map, history, seat_avail=None):
     cost = 0.0
     n = len(player_ids)
 
@@ -356,15 +411,18 @@ def score_candidate_pod(player_ids, points_map, rank_map, history):
     ranks = [rank_map[pid] for pid in player_ids]
     cost += 0.1 * (max(ranks) - min(ranks))
 
+    # Seat diversity cost
+    cost += SEAT_WEIGHT * _seat_conflict_cost(player_ids, seat_avail)
+
     return cost
 
 
-def solve_ilp(candidates, pool, points_map, rank_map, history):
+def solve_ilp(candidates, pool, points_map, rank_map, history, seat_avail=None):
     player_ids = {p.id for p in pool}
 
     scored = []
     for cand in candidates:
-        cost = score_candidate_pod(cand, points_map, rank_map, history)
+        cost = score_candidate_pod(cand, points_map, rank_map, history, seat_avail)
         scored.append((cand, cost))
 
     prob = pulp.LpProblem("SwissPairing", pulp.LpMinimize)
@@ -397,14 +455,14 @@ def solve_ilp(candidates, pool, points_map, rank_map, history):
     return result
 
 
-def greedy_fallback(pool, points_map, rank_map, history):
+def greedy_fallback(pool, points_map, rank_map, history, seat_avail=None):
     # For small pools, try multiple starting orders to avoid greedy traps
     if len(pool) <= 32:
-        return _multi_start_greedy(pool, points_map, rank_map, history)
-    return _single_greedy(pool, points_map, rank_map, history)
+        return _multi_start_greedy(pool, points_map, rank_map, history, seat_avail)
+    return _single_greedy(pool, points_map, rank_map, history, seat_avail)
 
 
-def _single_greedy(pool, points_map, rank_map, history):
+def _single_greedy(pool, points_map, rank_map, history, seat_avail=None):
     remaining = list(pool)
     pods = []
 
@@ -419,7 +477,7 @@ def _single_greedy(pool, points_map, rank_map, history):
         if len(candidates) >= 3:
             for combo in itertools.combinations(candidates, 3):
                 pod_ids = tuple(sorted([anchor.id] + [p.id for p in combo]))
-                cost = score_candidate_pod(pod_ids, points_map, rank_map, history)
+                cost = score_candidate_pod(pod_ids, points_map, rank_map, history, seat_avail)
                 if cost < best_cost:
                     best_cost = cost
                     best_pod = [anchor] + list(combo)
@@ -441,7 +499,7 @@ def _single_greedy(pool, points_map, rank_map, history):
     return pods
 
 
-def _multi_start_greedy(pool, points_map, rank_map, history):
+def _multi_start_greedy(pool, points_map, rank_map, history, seat_avail=None):
     """Try each player as first anchor, pick the assignment with lowest total cost."""
     best_pods = None
     best_total = float('inf')
@@ -449,13 +507,13 @@ def _multi_start_greedy(pool, points_map, rank_map, history):
     for start in range(len(pool)):
         # Reorder: put start player first, rest in original order
         reordered = [pool[start]] + [p for i, p in enumerate(pool) if i != start]
-        pods = _single_greedy(reordered, points_map, rank_map, history)
+        pods = _single_greedy(reordered, points_map, rank_map, history, seat_avail)
 
         # Score the entire assignment
         total = 0.0
         for pod in pods:
             pod_ids = tuple(sorted(p.id for p in pod))
-            total += score_candidate_pod(pod_ids, points_map, rank_map, history)
+            total += score_candidate_pod(pod_ids, points_map, rank_map, history, seat_avail)
 
         if total < best_total:
             best_total = total
@@ -463,6 +521,49 @@ def _multi_start_greedy(pool, points_map, rank_map, history):
 
     _log(f"  Multi-start greedy: tried {len(pool)} starts, best cost={best_total:.1f}")
     return best_pods
+
+
+def _current_cycle_used(seat_list, pod_size):
+    """Walk a player's seat history and return seats used in current (incomplete) cycle."""
+    used = set()
+    for s in seat_list:
+        if len(used) == pod_size:
+            used = set()  # cycle complete, reset
+        used.add(s)
+    if len(used) == pod_size:
+        return set()  # just completed a cycle, next round is fresh
+    return used
+
+
+def _assign_seats(pod_players, seat_hist):
+    """Assign seats respecting no-repeat-until-cycled constraint.
+
+    Brute-force all seat permutations (max 4! = 24) and pick the one where
+    the most players get a seat they haven't had yet. Ties broken randomly.
+    """
+    import random
+    pod_size = len(pod_players)
+    all_seats = list(range(1, pod_size + 1))
+
+    # Build available (new) seats per player based on current cycle
+    available = {}
+    for p in pod_players:
+        used = _current_cycle_used(seat_hist.get(p.id, []), pod_size)
+        available[p.id] = set(all_seats) - used if used else set(all_seats)
+
+    best_score = -1
+    best_perms = []
+
+    for perm in itertools.permutations(all_seats):
+        score = sum(1 for p, s in zip(pod_players, perm) if s in available[p.id])
+        if score > best_score:
+            best_score = score
+            best_perms = [perm]
+        elif score == best_score:
+            best_perms.append(perm)
+
+    chosen = random.choice(best_perms)
+    return list(zip(chosen, pod_players))
 
 
 def create_round_and_pods(tournament, round_number, pod_assignments, bye_players, points_map, rank_map, history):
@@ -476,6 +577,10 @@ def create_round_and_pods(tournament, round_number, pod_assignments, bye_players
 
     pod_number = 1
 
+    # Build seat history for all players in one query
+    all_player_ids = [p.id for pods in pod_assignments for p in pods]
+    seat_hist = SeatHistory.bulk_seat_history(tournament.id, all_player_ids)
+
     # Create regular pods
     for pod_players in pod_assignments:
         pod = Pod(
@@ -488,13 +593,16 @@ def create_round_and_pods(tournament, round_number, pod_assignments, bye_players
         db.session.add(pod)
         db.session.flush()
 
-        for seat, player in enumerate(pod_players, 1):
+        seated = _assign_seats(pod_players, seat_hist)
+        for seat, player in seated:
             assignment = PodAssignment(
                 pod_id=pod.id,
                 player_id=player.id,
                 seat_position=seat
             )
             db.session.add(assignment)
+            SeatHistory.record_seat(player.id, tournament.id, round_number, seat)
+            seat_hist.setdefault(player.id, []).append(seat)
 
         PairingHistory.record_pod_pairings(pod_players, tournament.id, round_number)
         pod_number += 1
