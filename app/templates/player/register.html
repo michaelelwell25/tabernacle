@@ -17,7 +17,7 @@
 </div>
 
 {% if tournament.status == 'active' and tournament.current_round > 0 %}
-<div class="flash flash-warning" style="margin-bottom:1rem;">
+<div class="flash flash-warning mb-2">
   Late registration — this player will start with 0 points for missed rounds.
 </div>
 {% endif %}
@@ -31,12 +31,12 @@
 
     <div class="form-group">
       <label class="form-label" for="decklist_url">Decklist URL</label>
-      <div style="display:flex;gap:0.5rem;">
-        <input type="url" id="decklist_url" name="decklist_url" class="form-control" placeholder="https://moxfield.com/decks/..." style="flex:1;">
+      <div class="form-row">
+        <input type="url" id="decklist_url" name="decklist_url" class="form-control" placeholder="https://moxfield.com/decks/...">
         <button type="button" class="btn btn-outline btn-sm" onclick="fetchDeck()" id="fetchBtn">Fetch</button>
       </div>
       <div class="form-hint">Paste a Moxfield link to auto-fill commander</div>
-      <div id="fetchStatus" style="margin-top:0.35rem;font-size:0.8rem;"></div>
+      <div id="fetchStatus" class="mt-1 text-xs"></div>
     </div>
 
     <div class="form-group">
@@ -63,12 +63,12 @@ async function fetchDeck() {
   const status = document.getElementById('fetchStatus');
   const btn = document.getElementById('fetchBtn');
 
-  if (!url) { status.innerHTML = '<span style="color:var(--error)">Enter a URL first</span>'; return; }
+  if (!url) { status.innerHTML = '<span class="text-danger">Enter a URL first</span>'; return; }
 
-  if (!url.match(/moxfield\.com\/decks\//)) { status.innerHTML = '<span style="color:var(--error)">Not a valid Moxfield URL</span>'; return; }
+  if (!url.match(/moxfield\.com\/decks\//)) { status.innerHTML = '<span class="text-danger">Not a valid Moxfield URL</span>'; return; }
 
   btn.disabled = true;
-  status.innerHTML = '<span style="color:var(--text-muted)">Fetching...</span>';
+  status.innerHTML = '<span class="text-muted">Fetching...</span>';
 
   try {
     const resp = await fetch('/players/api/moxfield-fetch?url=' + encodeURIComponent(url));
@@ -76,12 +76,12 @@ async function fetchDeck() {
 
     if (resp.ok && data.commander) {
       document.getElementById('commander').value = data.commander;
-      status.innerHTML = '<span style="color:var(--success)">Found: ' + data.commander + '</span>';
+      status.innerHTML = '<span class="text-success">Found: ' + data.commander + '</span>';
     } else {
-      status.innerHTML = '<span style="color:var(--warning)">No commander found — enter manually</span>';
+      status.innerHTML = '<span class="text-accent">No commander found — enter manually</span>';
     }
   } catch (e) {
-    status.innerHTML = '<span style="color:var(--warning)">Could not fetch — enter commander manually</span>';
+    status.innerHTML = '<span class="text-accent">Could not fetch — enter commander manually</span>';
   }
   btn.disabled = false;
 }

@@ -31,6 +31,15 @@ def view_round(round_id):
     return render_template('round/pairings.html', tournament=tournament, round=round_obj, pods=pods, is_latest_round=is_latest_round)
 
 
+@bp.route('/<int:round_id>/tv')
+def tv_display(round_id):
+    """Full-screen TV display with auto-scrolling pairings and timer"""
+    round_obj = Round.query.get_or_404(round_id)
+    tournament = round_obj.tournament
+    player_count = sum(len(pod.assignments.all()) for pod in round_obj.pods.all())
+    return render_template('round/tv.html', tournament=tournament, round=round_obj, player_count=player_count)
+
+
 @bp.route('/tournament/<int:tournament_id>/generate', methods=['POST'])
 def generate_round(tournament_id):
     """Generate pairings for the next round"""

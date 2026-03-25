@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Join {{ tournament.name }} - Tabernacle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -25,8 +28,8 @@
     {% endif %}
     {% endwith %}
 
-    <div style="text-align:center;margin-bottom:2rem;">
-      <h1 style="margin-bottom:0.25rem;">{{ tournament.name }}</h1>
+    <div class="join-header">
+      <h1>{{ tournament.name }}</h1>
       <div class="text-secondary">
         {{ tournament.date.strftime('%B %d, %Y') if tournament.date else '' }}
         <span>&middot;</span>
@@ -35,9 +38,9 @@
     </div>
 
     {% if timer_end %}
-    <div id="playerTimer" style="text-align:center;margin-bottom:1.5rem;">
-      <div id="playerTimerDisplay" style="font-size:2.5rem;font-weight:700;color:var(--success);font-variant-numeric:tabular-nums;">--:--</div>
-      <div class="text-secondary" style="font-size:0.85rem;">Round {{ tournament.current_round }} Timer</div>
+    <div class="join-timer" id="playerTimer">
+      <div class="join-timer-display" id="playerTimerDisplay">--:--</div>
+      <div class="text-secondary join-timer-label">Round {{ tournament.current_round }} Timer</div>
     </div>
     <script>
     (function() {
@@ -65,78 +68,88 @@
     {% endif %}
 
     {% if can_register %}
-    <div class="card form-card" id="regCard" style="max-width:28rem;margin:0 auto 2rem;">
-      <h2 style="font-size:1.1rem;margin-bottom:1rem;">Register</h2>
-      <form method="POST" action="{{ url_for('player.join_tournament', tournament_id=tournament.id) }}">
-        <div class="form-group">
-          <label class="form-label" for="name">Your Name</label>
-          <input type="text" id="name" name="name" class="form-control" placeholder="First Last" required autofocus>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="decklist_url">Decklist URL</label>
-          <div style="display:flex;gap:0.5rem;">
-            <input type="url" id="decklist_url" name="decklist_url" class="form-control" placeholder="https://moxfield.com/decks/..." style="flex:1;">
-            <button type="button" class="btn btn-outline btn-sm" onclick="fetchDeck()" id="fetchBtn">Fetch</button>
+    <div class="card-centered">
+      <div class="card form-card" id="regCard">
+        <h2 class="join-card-heading">Register</h2>
+        <form method="POST" action="{{ url_for('player.join_tournament', tournament_id=tournament.id) }}">
+          <div class="form-group">
+            <label class="form-label" for="name">Your Name</label>
+            <input type="text" id="name" name="name" class="form-control" placeholder="First Last" required autofocus>
           </div>
-          <div id="fetchStatus" style="margin-top:0.35rem;font-size:0.8rem;"></div>
-        </div>
 
-        <div class="form-group">
-          <label class="form-label" for="commander">Commander</label>
-          <input type="text" id="commander" name="commander" class="form-control" placeholder="Auto-filled or type manually">
-        </div>
+          <div class="form-group">
+            <label class="form-label" for="decklist_url">Decklist URL</label>
+            <div class="form-row">
+              <input type="url" id="decklist_url" name="decklist_url" class="form-control" placeholder="https://moxfield.com/decks/...">
+              <button type="button" class="btn btn-outline btn-sm" onclick="fetchDeck()" id="fetchBtn">Fetch</button>
+            </div>
+            <div id="fetchStatus" class="mt-1 text-xs"></div>
+          </div>
 
-        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;" onclick="localStorage.setItem('tabernacle_player_{{tournament.id}}',document.getElementById('name').value.trim())">Join Tournament</button>
-      </form>
+          <div class="form-group">
+            <label class="form-label" for="commander">Commander</label>
+            <input type="text" id="commander" name="commander" class="form-control" placeholder="Auto-filled or type manually">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg btn-block" onclick="localStorage.setItem('tabernacle_player_{{tournament.id}}',document.getElementById('name').value.trim())">Join Tournament</button>
+        </form>
+      </div>
     </div>
     {% else %}
-    <div class="card" style="max-width:28rem;margin:0 auto 2rem;text-align:center;padding:2rem;">
-      {% if tournament.status == 'completed' %}
-      <h3>Tournament Complete</h3>
-      <p class="text-secondary">This tournament has ended.</p>
-      {% else %}
-      <h3>Registration Closed</h3>
-      <p class="text-secondary">This tournament is in progress. Contact the TO if you need to register late.</p>
-      {% endif %}
+    <div class="card-centered">
+      <div class="card text-center" style="padding:2rem;">
+        {% if tournament.status == 'completed' %}
+        <h3>Tournament Complete</h3>
+        <p class="text-secondary">This tournament has ended.</p>
+        {% else %}
+        <h3>Registration Closed</h3>
+        <p class="text-secondary">This tournament is in progress. Contact the TO if you need to register late.</p>
+        {% endif %}
+      </div>
     </div>
     {% endif %}
 
     <!-- My Table auto-lookup -->
     {% if tournament.status in ('active', 'playoffs') and tournament.current_round > 0 %}
-    <div class="card" style="max-width:28rem;margin:0 auto 2rem;padding:1.25rem;">
-      <h2 style="font-size:1.1rem;margin-bottom:0.75rem;">My Table — Round {{ tournament.current_round }}</h2>
-      <div id="autoSeatResult"></div>
-      <details style="margin-top:0.75rem;">
-        <summary class="text-secondary" style="cursor:pointer;font-size:0.85rem;">Search by name</summary>
-        <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
-          <input type="text" id="seatSearch" class="form-control" placeholder="Type your name..." oninput="findSeat()" style="flex:1;">
-        </div>
-        <div id="seatResult" style="margin-top:0.75rem;"></div>
-      </details>
+    <div class="card-centered">
+      <div class="card" style="padding:1.25rem;">
+        <h2 class="join-card-heading-sm">My Table — Round {{ tournament.current_round }}</h2>
+        <div id="autoSeatResult"></div>
+        <details class="search-details">
+          <summary class="text-secondary search-summary">Search by name</summary>
+          <div class="search-row">
+            <input type="text" id="seatSearch" class="form-control" placeholder="Type your name..." oninput="findSeat()">
+          </div>
+          <div id="seatResult" class="mt-1"></div>
+        </details>
+      </div>
     </div>
 
     <!-- Call Judge -->
-    <div class="card" style="max-width:28rem;margin:0 auto 2rem;padding:1.25rem;text-align:center;">
-      <button id="callJudgeBtn" class="btn btn-danger btn-lg" style="width:100%;font-size:1.1rem;" onclick="callJudge()">Call Judge</button>
-      <div id="judgeCallStatus" style="margin-top:0.5rem;font-size:0.85rem;"></div>
-      <div id="judgeReasonBox" style="display:none;margin-top:0.75rem;">
-        <input type="text" id="judgeReason" class="form-control" placeholder="Brief reason (optional)" style="margin-bottom:0.5rem;">
-        <button class="btn btn-danger" style="width:100%;" onclick="submitJudgeCall()">Confirm Call</button>
+    <div class="card-centered">
+      <div class="card judge-call-section" style="padding:1.25rem;">
+        <button id="callJudgeBtn" class="btn btn-danger btn-lg btn-block" onclick="callJudge()">Call Judge</button>
+        <div id="judgeCallStatus" class="mt-1 text-sm"></div>
+        <div id="judgeReasonBox" class="judge-reason-box">
+          <input type="text" id="judgeReason" class="form-control judge-reason-input" placeholder="Brief reason (optional)">
+          <button class="btn btn-danger btn-block" onclick="submitJudgeCall()">Confirm Call</button>
+        </div>
       </div>
     </div>
     {% endif %}
 
     <!-- Round History (auto-shown for saved player) -->
     {% if tournament.current_round and tournament.current_round > 0 %}
-    <div id="roundHistory" class="card" style="max-width:28rem;margin:0 auto 2rem;padding:1.25rem;display:none;">
-      <h2 style="font-size:1.1rem;margin-bottom:0.75rem;">My Rounds</h2>
-      <div id="roundHistoryContent"></div>
+    <div id="roundHistory" class="card-centered hidden">
+      <div class="card" style="padding:1.25rem;">
+        <h2 class="join-card-heading-sm">My Rounds</h2>
+        <div id="roundHistoryContent"></div>
+      </div>
     </div>
     {% endif %}
 
     <!-- Tabbed Info Section -->
-    <div style="max-width:32rem;margin:0 auto;">
+    <div class="card-centered-lg">
       <div class="player-tabs">
         <button class="player-tab active" onclick="switchTab('pairings')">Pairings</button>
         <button class="player-tab" onclick="switchTab('standings')">Standings</button>
@@ -183,10 +196,10 @@
             </thead>
             <tbody>
               {% for s in standings_data %}
-              <tr class="{{ 'player-dropped' if s.dropped }}">
-                <td class="text-center" style="font-weight:700;color:{% if loop.index == 1 %}var(--accent){% elif loop.index <= 3 %}var(--text-primary){% else %}var(--text-muted){% endif %};">{{ loop.index }}</td>
+              <tr class="{{ 'player-dropped' if s.dropped }}{% if loop.index == 1 %} rank-1{% elif loop.index <= 3 %} rank-{{ loop.index }}{% endif %}">
+                <td class="text-center {% if loop.index == 1 %}rank-gold{% elif loop.index <= 3 %}rank-default{% else %}rank-muted{% endif %}">{{ loop.index }}</td>
                 <td>{{ s.name }}</td>
-                <td class="text-center" style="font-weight:700;">{{ '%.1f'|format(s.points) if s.points != s.points|int else s.points|int }}</td>
+                <td class="text-center font-bold">{{ '%.1f'|format(s.points) if s.points != s.points|int else s.points|int }}</td>
                 <td class="text-center">{{ '%.1f'|format(s.omw * 100) }}%</td>
                 <td>
                   {% if s.projection == 'clinched' %}<span class="badge badge-green">Clinched</span>
@@ -246,12 +259,12 @@ async function fetchDeck() {
   const status = document.getElementById('fetchStatus');
   const btn = document.getElementById('fetchBtn');
 
-  if (!url) { status.innerHTML = '<span style="color:var(--error)">Enter a URL first</span>'; return; }
+  if (!url) { status.innerHTML = '<span class="text-danger">Enter a URL first</span>'; return; }
 
-  if (!url.match(/moxfield\.com\/decks\//)) { status.innerHTML = '<span style="color:var(--error)">Not a valid Moxfield URL</span>'; return; }
+  if (!url.match(/moxfield\.com\/decks\//)) { status.innerHTML = '<span class="text-danger">Not a valid Moxfield URL</span>'; return; }
 
   btn.disabled = true;
-  status.innerHTML = '<span style="color:var(--text-muted)">Fetching...</span>';
+  status.innerHTML = '<span class="text-muted">Fetching...</span>';
 
   try {
     const resp = await fetch('/players/api/moxfield-fetch?url=' + encodeURIComponent(url));
@@ -259,12 +272,12 @@ async function fetchDeck() {
 
     if (resp.ok && data.commander) {
       document.getElementById('commander').value = data.commander;
-      status.innerHTML = '<span style="color:var(--success)">Found: ' + data.commander + '</span>';
+      status.innerHTML = '<span class="text-success">Found: ' + data.commander + '</span>';
     } else {
-      status.innerHTML = '<span style="color:var(--warning)">No commander found — enter manually</span>';
+      status.innerHTML = '<span class="text-accent">No commander found — enter manually</span>';
     }
   } catch (e) {
-    status.innerHTML = '<span style="color:var(--warning)">Could not fetch — enter commander manually</span>';
+    status.innerHTML = '<span class="text-accent">Could not fetch — enter commander manually</span>';
   }
   btn.disabled = false;
 }
@@ -319,9 +332,9 @@ const roundHistory = {{ round_history|tojson }};
   // Hide registration form for returning players
   const regCard = document.getElementById('regCard');
   if (regCard) {
-    regCard.innerHTML = '<div style="text-align:center;padding:0.5rem 0;">' +
-      '<span style="color:var(--success);font-weight:600;">Registered as ' + saved + '</span>' +
-      '<button class="btn btn-outline btn-sm" style="margin-left:0.75rem;font-size:0.75rem;" ' +
+    regCard.innerHTML = '<div class="text-center" style="padding:0.5rem 0;">' +
+      '<span class="text-success font-bold">Registered as ' + saved + '</span>' +
+      '<button class="btn btn-outline btn-sm ml-1 text-xs" ' +
       'onclick="localStorage.removeItem(\'tabernacle_player_{{ tournament.id }}\');location.reload()">Not you?</button></div>';
   }
 
@@ -344,14 +357,14 @@ const roundHistory = {{ round_history|tojson }};
   const key = Object.keys(roundHistory).find(k => k.toLowerCase() === saved.toLowerCase());
   if (!key || roundHistory[key].length === 0) return;
 
-  historyDiv.style.display = 'block';
+  historyDiv.classList.remove('hidden');
   const badges = { win: 'badge-green', loss: 'badge-red', draw: 'badge-gray', bye: 'badge-gold', pending: 'badge-blue' };
   historyContent.innerHTML = roundHistory[key].map(r => {
     const b = badges[r.result] || 'badge-gray';
     const label = r.result.charAt(0).toUpperCase() + r.result.slice(1);
     const pts = r.points !== null ? ' (+' + r.points + ')' : '';
-    const vs = r.is_bye ? '' : '<div class="text-secondary" style="font-size:0.8rem;">vs ' + r.opponents.join(', ') + '</div>';
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);">' +
+    const vs = r.is_bye ? '' : '<div class="text-secondary round-history-opponents">vs ' + r.opponents.join(', ') + '</div>';
+    return '<div class="round-history-row">' +
       '<div><strong>R' + r.round + '</strong> — Table ' + r.table + vs + '</div>' +
       '<div><span class="badge ' + b + '">' + label + pts + '</span></div></div>';
   }).join('');
@@ -361,7 +374,7 @@ const roundHistory = {{ round_history|tojson }};
 function callJudge() {
   const saved = localStorage.getItem('tabernacle_player_{{ tournament.id }}');
   if (!saved) {
-    document.getElementById('judgeCallStatus').innerHTML = '<span style="color:var(--error)">Register first so we know who you are</span>';
+    document.getElementById('judgeCallStatus').innerHTML = '<span class="text-danger">Register first so we know who you are</span>';
     return;
   }
   document.getElementById('judgeReasonBox').style.display = 'block';
@@ -390,76 +403,17 @@ async function submitJudgeCall() {
     const data = await resp.json();
     if (resp.ok) {
       document.getElementById('judgeReasonBox').style.display = 'none';
-      status.innerHTML = '<span style="color:var(--success);font-weight:600;">Judge called! Stay at your table.</span>';
+      status.innerHTML = '<span class="text-success font-bold">Judge called! Stay at your table.</span>';
     } else {
       document.getElementById('judgeReasonBox').style.display = 'none';
       document.getElementById('callJudgeBtn').style.display = '';
-      status.innerHTML = '<span style="color:var(--warning)">' + (data.error || 'Could not call judge') + '</span>';
+      status.innerHTML = '<span class="text-accent">' + (data.error || 'Could not call judge') + '</span>';
     }
   } catch (e) {
-    status.innerHTML = '<span style="color:var(--error)">Network error — try again</span>';
+    status.innerHTML = '<span class="text-danger">Network error — try again</span>';
   }
 }
 </script>
 <script>setInterval(()=>fetch('/health'),240000);</script>
-<style>
-.seat-card {
-  padding: 1rem; margin-bottom: 0.5rem; background: var(--bg-secondary);
-  border: 1px solid var(--border); border-radius: var(--radius-lg); text-align: center;
-}
-.seat-card-table {
-  font-size: 2rem; font-weight: 700; color: var(--accent); margin: 0.25rem 0;
-}
-.seat-card-detail {
-  font-size: 1rem; color: var(--text-secondary); margin-bottom: 0.5rem;
-}
-.seat-card-opponents {
-  font-size: 0.85rem; color: var(--text-muted);
-}
-.player-tabs {
-  display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1rem;
-}
-.player-tab {
-  flex: 1; padding: 0.7rem 0.5rem; text-align: center; background: none; border: none;
-  color: var(--text-muted); font-weight: 600; font-size: 0.9rem; cursor: pointer;
-  border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s;
-}
-.player-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.player-tab:hover { color: var(--text-primary); }
-.tab-content { display: none; }
-.tab-content.active { display: block; }
-.tab-empty { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
-.player-pod-card {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
-  margin-bottom: 0.75rem; overflow: hidden;
-}
-.player-pod-header {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 0.5rem 0.85rem; font-weight: 700; font-size: 0.9rem;
-  background: var(--bg-secondary); border-bottom: 1px solid var(--border);
-}
-.player-pod-row {
-  display: flex; align-items: center; gap: 0.5rem;
-  padding: 0.45rem 0.85rem; border-bottom: 1px solid var(--border-light, rgba(0,0,0,0.05));
-  font-size: 0.9rem;
-}
-.player-pod-row:last-child { border-bottom: none; }
-.player-pod-seat {
-  width: 1.4rem; height: 1.4rem; display: inline-flex; align-items: center; justify-content: center;
-  background: var(--bg-secondary); border-radius: 50%; font-size: 0.7rem; font-weight: 700;
-  color: var(--text-muted); flex-shrink: 0;
-}
-#regCard { transition: max-height 0.3s, opacity 0.3s, margin 0.3s; overflow: hidden; }
-#regCard.hidden { max-height: 0; opacity: 0; margin: 0; padding: 0; border: none; }
-@media (max-width: 640px) {
-  .container { padding: 0.75rem; }
-  h1 { font-size: 1.3rem; }
-  .card, .form-card { padding: 1rem; }
-  .form-control { font-size: 16px; }
-  .btn-lg { padding: 0.85rem 1.25rem; width: 100%; }
-  .table th, .table td { padding: 0.5rem 0.6rem; font-size: 0.8rem; }
-  .player-pod-row { font-size: 0.85rem; }
-}
-</style>
 </body>
 </html>

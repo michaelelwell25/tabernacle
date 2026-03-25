@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Round {{ round.round_number }} — {{ tournament.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0b10;
+      --bg-card: #14161f;
+      --bg-header: #1a1c28;
+      --border: #2a2a3a;
+      --text: #ececf1;
+      --text-dim: #8e8ea0;
+      --text-muted: #55556a;
+      --accent: #e5b83a;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --error: #f87171;
+      --radius: 12px;
+      --scroll-speed: 40;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+      height: 100vh;
+      cursor: none;
+    }
+
+    .tv-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      height: 100vh;
+      gap: 0;
+    }
+
+    /* ---- PAIRINGS COLUMN ---- */
+    .pairings-col {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pairings-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: linear-gradient(180deg, var(--bg) 60%, transparent);
+      padding: 1.5rem 2rem 2rem;
+    }
+
+    .pairings-header h1 {
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .pairings-header .round-label {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .scroll-viewport {
+      height: 100vh;
+      overflow: hidden;
+      padding: 0 2rem;
+    }
+
+    .scroll-track {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding-top: 5.5rem;
+      padding-bottom: 2rem;
+    }
+
+    .tv-pod {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .tv-pod-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.65rem 1.25rem;
+      background: var(--bg-header);
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .tv-pod-header .table-num {
+      color: var(--accent);
+    }
+
+    .tv-pod-bye .tv-pod-header {
+      border-left: 3px solid var(--accent);
+    }
+
+    .tv-player {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.55rem 1.25rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 1rem;
+    }
+
+    .tv-player:last-child { border-bottom: none; }
+
+    .tv-seat {
+      width: 1.6rem;
+      height: 1.6rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.06);
+      border-radius: 50%;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .tv-commander {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-style: italic;
+      margin-left: 0.3rem;
+    }
+
+    .tv-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      margin-left: auto;
+    }
+
+    .tv-badge-bye {
+      background: rgba(229,184,58,0.15);
+      color: var(--accent);
+    }
+
+    .tv-badge-done {
+      background: rgba(52,211,153,0.15);
+      color: var(--success);
+    }
+
+    /* ---- SIDEBAR ---- */
+    .sidebar {
+      background: var(--bg-card);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+      gap: 2rem;
+    }
+
+    .sidebar-brand {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .sidebar-brand .brand-icon {
+      color: var(--accent);
+      font-size: 1.2rem;
+    }
+
+    .timer-block {
+      text-align: center;
+    }
+
+    .timer-value {
+      font-size: 5rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      color: var(--success);
+    }
+
+    .timer-value.warning { color: var(--warning); }
+    .timer-value.expired {
+      color: var(--error);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .timer-label {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      margin-top: 0.5rem;
+      font-weight: 500;
+    }
+
+    .sidebar-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .sidebar-stat {
+      text-align: center;
+      padding: 1rem;
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius);
+    }
+
+    .sidebar-stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -0.03em;
+    }
+
+    .sidebar-stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.2rem;
+    }
+
+    .scroll-progress {
+      width: 80%;
+      height: 3px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .scroll-progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s linear;
+    }
+
+    /* Fade edges */
+    .pairings-col::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 80px;
+      background: linear-gradient(transparent, var(--bg));
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div class="tv-layout">
+    <div class="pairings-col">
+      <div class="pairings-header">
+        <h1>{{ tournament.name }} — <span class="round-label">Round {{ round.round_number }}</span></h1>
+      </div>
+      <div class="scroll-viewport" id="viewport">
+        <div class="scroll-track" id="scrollTrack">
+          {% for pod in round.pods.order_by('pod_number').all() %}
+          <div class="tv-pod {{ 'tv-pod-bye' if pod.is_bye }}">
+            <div class="tv-pod-header">
+              <span class="table-num">Table {{ pod.table_number }}</span>
+              {% if pod.is_bye %}
+              <span class="tv-badge tv-badge-bye">BYE</span>
+              {% elif pod.status == 'completed' %}
+              <span class="tv-badge tv-badge-done">DONE</span>
+              {% endif %}
+            </div>
+            {% for pp in pod.assignments %}
+            <div class="tv-player">
+              <span class="tv-seat">{{ pp.seat_position }}</span>
+              <span>{{ pp.player.name }}</span>
+              {% if pp.player.commander %}
+              <span class="tv-commander">{{ pp.player.commander }}</span>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="sidebar-brand"><span class="brand-icon">&#9876;</span> Tabernacle</div>
+
+      <div class="timer-block">
+        {% if round.timer_end %}
+        <div class="timer-value" id="timerValue">--:--</div>
+        <div class="timer-label">Round {{ round.round_number }} Timer</div>
+        {% else %}
+        <div class="timer-value" style="font-size:2rem;color:var(--text-muted);">No Timer</div>
+        <div class="timer-label">Timer not set</div>
+        {% endif %}
+      </div>
+
+      <div class="sidebar-stats">
+        <div class="sidebar-stat">
+          <div class="sidebar-stat-value">{{ round.get_pod_count() }}</div>
+          <div class="sidebar-stat-label">Tables</div>
+        </div>
+        <div class="sidebar-stat">
+          <div class="sidebar-stat-value">{{ player_count }}</div>
+          <div class="sidebar-stat-label">Players</div>
+        </div>
+      </div>
+
+      <div class="scroll-progress">
+        <div class="scroll-progress-bar" id="progressBar"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ---- TIMER ----
+{% if round.timer_end %}
+(function() {
+  const end = new Date("{{ round.timer_end.strftime('%Y-%m-%dT%H:%M:%S') }}Z").getTime();
+  const el = document.getElementById('timerValue');
+  function tick() {
+    const diff = end - Date.now();
+    if (diff <= 0) {
+      el.textContent = "TIME!";
+      el.classList.remove('warning');
+      el.classList.add('expired');
+      return;
+    }
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    if (h > 0) el.textContent = h + ":" + String(m).padStart(2,'0') + ":" + String(s).padStart(2,'0');
+    else el.textContent = m + ":" + String(s).padStart(2,'0');
+    if (diff < 300000) el.classList.add('warning');
+    else el.classList.remove('warning');
+    requestAnimationFrame(tick);
+  }
+  tick();
+})();
+{% endif %}
+
+// ---- AUTO SCROLL ----
+(function() {
+  const track = document.getElementById('scrollTrack');
+  const viewport = document.getElementById('viewport');
+  const progressBar = document.getElementById('progressBar');
+
+  // Pixels per second
+  const speed = 30;
+  // Pause at top/bottom in ms
+  const pauseDuration = 4000;
+
+  let scrollPos = 0;
+  let direction = 1;
+  let paused = false;
+  let pauseTimeout = null;
+  let lastTime = null;
+
+  function getMaxScroll() {
+    return Math.max(0, track.scrollHeight - viewport.clientHeight);
+  }
+
+  function animate(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+
+    if (!paused) {
+      const maxScroll = getMaxScroll();
+      if (maxScroll <= 0) {
+        // Everything fits on screen, no scrolling needed
+        progressBar.style.width = '100%';
+        requestAnimationFrame(animate);
+        return;
+      }
+
+      scrollPos += speed * dt * direction;
+
+      // Hit bottom
+      if (scrollPos >= maxScroll) {
+        scrollPos = maxScroll;
+        paused = true;
+        pauseTimeout = setTimeout(() => { direction = -1; paused = false; }, pauseDuration);
+      }
+      // Hit top
+      if (scrollPos <= 0) {
+        scrollPos = 0;
+        paused = true;
+        pauseTimeout = setTimeout(() => { direction = 1; paused = false; }, pauseDuration);
+      }
+
+      track.style.transform = 'translateY(' + (-scrollPos) + 'px)';
+      progressBar.style.width = (scrollPos / maxScroll * 100) + '%';
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  // Start after initial pause
+  paused = true;
+  setTimeout(() => { paused = false; lastTime = null; }, pauseDuration);
+  requestAnimationFrame(animate);
+
+  // Click anywhere to toggle pause
+  document.addEventListener('click', () => {
+    if (pauseTimeout) { clearTimeout(pauseTimeout); pauseTimeout = null; }
+    paused = !paused;
+    if (!paused) lastTime = null;
+  });
+
+  // Press space to toggle, R to reset to top
+  document.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      if (pauseTimeout) { clearTimeout(pauseTimeout); pauseTimeout = null; }
+      paused = !paused;
+      if (!paused) lastTime = null;
+    }
+    if (e.key === 'r' || e.key === 'R') {
+      scrollPos = 0;
+      direction = 1;
+      track.style.transform = 'translateY(0)';
+      progressBar.style.width = '0%';
+    }
+  });
+})();
+
+// Keep alive
+setInterval(() => fetch('/health'), 240000);
+</script>
+</body>
+</html>

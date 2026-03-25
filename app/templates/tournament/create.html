@@ -55,22 +55,22 @@
 
     <div class="form-group">
       <label class="form-label">Seat-Based Scoring</label>
-      <div style="display:flex;gap:1rem;margin-top:0.5rem;">
-        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
-          <input type="checkbox" name="seat_scoring" value="1" style="accent-color:var(--accent);" onchange="document.getElementById('seatConfig').style.display=this.checked?'block':'none'">
+      <div class="toggle-group">
+        <label class="toggle-option">
+          <input type="checkbox" name="seat_scoring" value="1" onchange="document.getElementById('seatConfig').style.display=this.checked?'block':'none'">
           <span>Adjust points by seat position</span>
         </label>
       </div>
       <div class="form-hint">Compensate for seat-order advantage with per-seat point values</div>
-      <div id="seatConfig" style="display:none;margin-top:0.75rem;padding:0.75rem;background:var(--bg-secondary);border-radius:var(--radius);">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+      <div id="seatConfig" class="seat-config-panel">
+        <div class="seat-config-grid">
           <div>
-            <label class="form-label" style="font-size:0.8rem;">Win Points (seat 1-2-3-4)</label>
-            <input type="text" name="seat_win_points" class="form-control" value="5.2-5.4-5.6-5.8" style="font-size:0.85rem;">
+            <label class="form-label seat-config-label">Win Points (seat 1-2-3-4)</label>
+            <input type="text" name="seat_win_points" class="form-control text-sm" value="5.2-5.4-5.6-5.8">
           </div>
           <div>
-            <label class="form-label" style="font-size:0.8rem;">Draw Points (seat 1-2-3-4)</label>
-            <input type="text" name="seat_draw_points" class="form-control" value="0.2-0.4-0.6-0.8" style="font-size:0.85rem;">
+            <label class="form-label seat-config-label">Draw Points (seat 1-2-3-4)</label>
+            <input type="text" name="seat_draw_points" class="form-control text-sm" value="0.2-0.4-0.6-0.8">
           </div>
         </div>
       </div>
@@ -78,13 +78,13 @@
 
     <div class="form-group">
       <label class="form-label">Odd Player Handling</label>
-      <div style="display:flex;gap:1rem;margin-top:0.5rem;">
-        <label class="toggle-option" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
-          <input type="radio" name="allow_byes" value="1" checked style="accent-color:var(--accent);">
+      <div class="toggle-group">
+        <label class="toggle-option">
+          <input type="radio" name="allow_byes" value="1" checked>
           <span>Assign byes</span>
         </label>
-        <label class="toggle-option" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
-          <input type="radio" name="allow_byes" value="0" style="accent-color:var(--accent);">
+        <label class="toggle-option">
+          <input type="radio" name="allow_byes" value="0">
           <span>Allow 3-player pods</span>
         </label>
       </div>

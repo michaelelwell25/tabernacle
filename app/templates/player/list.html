@@ -21,19 +21,19 @@
 </div>
 
 {% if tournament.status != 'completed' %}
-<div id="csvImport" class="card" style="max-width:28rem;margin-bottom:1.25rem;">
-  <form method="POST" action="{{ url_for('player.import_csv', tournament_id=tournament.id) }}" enctype="multipart/form-data" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
-    <input type="file" name="csv_file" accept=".csv" class="form-control" style="flex:1;min-width:10rem;" required>
+<div id="csvImport" class="card card-centered hidden">
+  <form method="POST" action="{{ url_for('player.import_csv', tournament_id=tournament.id) }}" enctype="multipart/form-data" class="form-row items-center">
+    <input type="file" name="csv_file" accept=".csv" class="form-control" style="min-width:10rem;" required>
     <button type="submit" class="btn btn-primary btn-sm">Upload</button>
   </form>
-  <div class="form-hint" style="margin-top:0.5rem;">CSV with columns: <code>name</code>, <code>commander</code>, <code>decklist</code> (optional). Moxfield URLs auto-fetch commanders.</div>
+  <div class="form-hint mt-1">CSV with columns: <code>name</code>, <code>commander</code>, <code>decklist</code> (optional). Moxfield URLs auto-fetch commanders.</div>
 </div>
-<style>#csvImport { display: none; } #csvImport.open { display: block; }</style>
+<style>#csvImport { display: none; margin-bottom: 1.25rem; } #csvImport.open { display: block; }</style>
 {% endif %}
 
 <!-- Search -->
 {% if players|length > 8 %}
-<div style="margin-bottom:1rem;">
+<div class="mb-2">
   <input type="text" id="playerSearch" class="form-control" placeholder="Search players or commanders..." style="max-width:20rem;" oninput="filterPlayers()">
 </div>
 {% endif %}
@@ -59,16 +59,16 @@
         <td><span class="player-name">{{ p.name }}</span></td>
         <td>
           {% if tournament.status != 'completed' %}
-          <form method="POST" action="{{ url_for('player.edit_player', player_id=p.id) }}" class="inline-form" style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
-            <input type="text" name="commander" value="{{ p.commander or '' }}" class="form-control" style="padding:0.25rem 0.5rem;font-size:0.85rem;width:9rem;" placeholder="—">
-            <input type="url" name="decklist_url" value="{{ p.decklist_url or '' }}" class="form-control" style="padding:0.25rem 0.5rem;font-size:0.75rem;width:7rem;" placeholder="Moxfield URL">
+          <form method="POST" action="{{ url_for('player.edit_player', player_id=p.id) }}" class="inline-edit-form">
+            <input type="text" name="commander" value="{{ p.commander or '' }}" class="form-control input-compact" style="width:9rem;" placeholder="—">
+            <input type="url" name="decklist_url" value="{{ p.decklist_url or '' }}" class="form-control input-xs" placeholder="Moxfield URL">
             <button type="submit" class="btn btn-outline btn-sm" style="padding:0.15rem 0.5rem;font-size:0.75rem;">Save</button>
           </form>
           {% else %}
           <span>
             {{ p.commander or '—' }}
             {% if p.decklist_url %}
-            <a href="{{ p.decklist_url }}" target="_blank" class="text-accent" style="font-size:0.75rem;margin-left:0.3rem;">deck</a>
+            <a href="{{ p.decklist_url }}" target="_blank" class="text-accent text-xs ml-1">deck</a>
             {% endif %}
           </span>
           {% endif %}

@@ -51,14 +51,14 @@
     {% if pr.playoff_stage == 'semi' %}Semifinals{% else %}Finals{% endif %}
     &mdash; Round {{ pr.round_number }}
     {% if pr.status == 'completed' or pr.is_complete() %}
-    <span class="badge badge-green" style="margin-left:0.5rem;">Complete</span>
+    <span class="badge badge-green ml-1">Complete</span>
     {% else %}
-    <span class="badge badge-blue" style="margin-left:0.5rem;">In Progress</span>
+    <span class="badge badge-blue ml-1">In Progress</span>
     {% endif %}
   </div>
 
   {% for pod in pr.pods.order_by('pod_number') %}
-  <div class="pod-card {{ 'pod-bye' if pod.is_bye }}" style="margin-bottom:1rem;">
+  <div class="pod-card {{ 'pod-bye' if pod.is_bye }} mb-2">
     <div class="pod-header">
       {% if pod.is_bye %}
       <span>Bye</span>
@@ -72,14 +72,14 @@
     </div>
     <div class="pod-body" style="padding:0.75rem 1rem;">
       {% for a in pod.assignments %}
-      <div style="display:flex;align-items:center;gap:0.75rem;padding:0.35rem 0;">
+      <div class="flex items-center gap-2" style="padding:0.35rem 0;">
         <span style="flex:1;font-weight:500;">{{ a.player.name }}</span>
         {% if pod.is_bye %}
         <span class="badge badge-gold">Advances</span>
         {% elif a.placement == 1 %}
         <span class="badge badge-green">WINNER</span>
         {% elif pod.is_complete() %}
-        <span class="text-secondary" style="font-size:0.8rem;">Eliminated</span>
+        <span class="text-secondary text-xs">Eliminated</span>
         {% endif %}
       </div>
       {% endfor %}
@@ -88,7 +88,7 @@
   {% endfor %}
 
   {% if not pr.is_complete() %}
-  <a href="{{ url_for('results.submit_results', round_id=pr.id) }}" class="btn btn-primary" style="margin-top:0.5rem;">Submit Results</a>
+  <a href="{{ url_for('results.submit_results', round_id=pr.id) }}" class="btn btn-primary mt-1">Submit Results</a>
   {% endif %}
 </div>
 {% endfor %}
@@ -121,7 +121,7 @@
   </div>
 </div>
 
-<div style="margin-top:1rem;">
+<div class="mt-2">
   <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}" class="btn btn-outline">Back to Dashboard</a>
 </div>
 {% endblock %}

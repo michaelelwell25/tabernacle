@@ -19,7 +19,7 @@
 <form method="POST" action="{{ url_for('results.submit_results', round_id=round.id) }}" id="resultsForm">
 
   {% for pod in pods %}
-  <div class="pod-card result-pod {{ 'pod-bye' if pod.is_bye }}" style="margin-bottom:1.5rem;">
+  <div class="pod-card result-pod {{ 'pod-bye' if pod.is_bye }} mb-3">
     <div class="pod-header">
       <span>Table {{ pod.table_number }}</span>
       {% if pod.is_bye %}
@@ -35,20 +35,20 @@
       </div>
       {% endfor %}
       {% else %}
-      <div class="result-options" style="display:flex;flex-direction:column;gap:0.5rem;">
+      <div class="result-options">
         {% for pp in pod.assignments %}
-        <label class="result-option" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;border-radius:var(--radius);cursor:pointer;transition:background 0.15s;">
-          <input type="radio" name="result_{{ pod.id }}" value="{{ pp.player_id }}" style="accent-color:var(--accent);"
+        <label class="result-option">
+          <input type="radio" name="result_{{ pod.id }}" value="{{ pp.player_id }}"
             {{ 'checked' if pp.placement == 1 }} required>
-          <span style="flex:1;font-weight:500;">{{ pp.player.name }}</span>
-          <span class="badge badge-green" style="font-size:0.7rem;">WINNER</span>
+          <span class="result-option-name">{{ pp.player.name }}</span>
+          <span class="badge badge-green text-xs">WINNER</span>
         </label>
         {% endfor %}
-        <label class="result-option" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;border-radius:var(--radius);cursor:pointer;transition:background 0.15s;border-top:1px solid var(--border);margin-top:0.25rem;padding-top:0.75rem;">
-          <input type="radio" name="result_{{ pod.id }}" value="draw" style="accent-color:var(--warning);"
+        <label class="result-option draw-pick">
+          <input type="radio" name="result_{{ pod.id }}" value="draw"
             {{ 'checked' if pod.status == "completed" and not pod.assignments.filter_by(placement=1).first() }}>
-          <span style="flex:1;font-weight:500;color:var(--warning);">Draw</span>
-          <span class="badge badge-gray" style="font-size:0.7rem;">{{ tournament.draw_points }} pts each</span>
+          <span class="result-option-name text-warning">Draw</span>
+          <span class="badge badge-gray text-xs">{{ tournament.draw_points }} pts each</span>
         </label>
       </div>
       {% endif %}
@@ -61,11 +61,4 @@
     <a href="{{ url_for('round.view_round', round_id=round.id) }}" class="btn btn-outline">Cancel</a>
   </div>
 </form>
-
-<style>
-.result-option:hover { background: var(--bg-hover); }
-.result-option input[type="radio"]:checked ~ .badge-green { opacity: 1; }
-.result-option .badge-green { opacity: 0.3; transition: opacity 0.15s; }
-.result-option input[type="radio"]:checked ~ span.badge-green { opacity: 1; }
-</style>
 {% endblock %}

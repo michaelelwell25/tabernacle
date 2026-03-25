@@ -35,19 +35,19 @@
     </thead>
     <tbody>
       {% for s in standings %}
-      <tr class="{{ 'player-dropped' if s['player'].dropped }}">
-        <td class="text-center" style="font-weight:700;color:{% if loop.index == 1 %}var(--accent){% elif loop.index <= 3 %}var(--text-primary){% else %}var(--text-muted){% endif %};">{{ loop.index }}</td>
+      <tr class="{{ 'player-dropped' if s['player'].dropped }}{% if loop.index == 1 %} rank-1{% elif loop.index <= 3 %} rank-{{ loop.index }}{% endif %}">
+        <td class="text-center {% if loop.index == 1 %}rank-gold{% elif loop.index <= 3 %}rank-default{% else %}rank-muted{% endif %}">{{ loop.index }}</td>
         <td>
           <span class="player-name">{{ s['player'].name }}</span>
           {% if s['playoff_tier'] == 0 %}
-          <span class="badge badge-gold" style="margin-left:0.4rem;font-size:0.65rem;">CHAMPION</span>
+          <span class="badge badge-gold ml-1 text-xs">CHAMPION</span>
           {% elif s['playoff_tier'] == 1 %}
-          <span class="badge badge-gray" style="margin-left:0.4rem;font-size:0.65rem;">FINALIST</span>
+          <span class="badge badge-gray ml-1 text-xs">FINALIST</span>
           {% elif s['playoff_tier'] == 2 %}
-          <span class="badge badge-gray" style="margin-left:0.4rem;font-size:0.65rem;">TOP 8</span>
+          <span class="badge badge-gray ml-1 text-xs">TOP 8</span>
           {% endif %}
         </td>
-        <td class="text-center" style="font-weight:700;">{{ '%.1f'|format(s['points']) if s['points'] != s['points']|int else s['points']|int }}</td>
+        <td class="text-center font-bold">{{ '%.1f'|format(s['points']) if s['points'] != s['points']|int else s['points']|int }}</td>
         <td class="text-center">{{ '%.1f'|format(s['omw_percentage'] * 100) }}%</td>
         <td class="text-center">{{ '%.1f'|format(s['gw_percentage'] * 100) }}%</td>
         <td class="text-center">{{ '%.1f'|format(s['ogw_percentage'] * 100) }}%</td>

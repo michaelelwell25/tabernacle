@@ -21,7 +21,7 @@
 
 {% if rounds %}
 {% for r in rounds %}
-<a href="{{ url_for('round.view_round', round_id=r.id) }}" style="color:inherit;text-decoration:none;">
+<a href="{{ url_for('round.view_round', round_id=r.id) }}" class="round-link">
   <div class="round-item">
     <div class="round-info">
       <span class="round-number">Round {{ r.round_number }}</span>
@@ -33,7 +33,7 @@
       <span class="badge badge-gray">{{ r.status|capitalize }}</span>
       {% endif %}
     </div>
-    <span class="text-secondary" style="font-size:0.85rem;">{{ r.get_pod_count() }} pod{{ 's' if r.get_pod_count() != 1 }}</span>
+    <span class="text-secondary text-sm">{{ r.get_pod_count() }} pod{{ 's' if r.get_pod_count() != 1 }}</span>
   </div>
 </a>
 {% endfor %}

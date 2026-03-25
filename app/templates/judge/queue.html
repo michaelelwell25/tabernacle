@@ -20,7 +20,7 @@
 <!-- Open Calls -->
 {% if open_calls %}
 <div class="section">
-  <div class="section-title" style="color:var(--error);">Needs Judge</div>
+  <div class="section-title text-danger">Needs Judge</div>
   {% for call in open_calls %}
   <div class="judge-call call-open">
     <div class="call-info">
@@ -29,13 +29,13 @@
         <strong>{{ call.player_name }}</strong>
         <span class="text-secondary"> — Round {{ call.round_number }}</span>
         {% if call.reason %}
-        <div class="text-secondary" style="font-size:0.85rem;">{{ call.reason }}</div>
+        <div class="text-secondary text-sm">{{ call.reason }}</div>
         {% endif %}
       </div>
       <div class="call-time">{{ call.created_at.strftime('%H:%M:%S') }} <span class="call-ago" data-ts="{{ call.created_at.strftime('%Y-%m-%dT%H:%M:%S') }}Z"></span></div>
     </div>
-    <form method="POST" action="{{ url_for('judge.claim_call', call_id=call.id) }}" style="display:flex;gap:0.4rem;align-items:center;">
-      <input type="text" name="judge_name" class="form-control" placeholder="Your name" style="width:7rem;padding:0.3rem 0.5rem;font-size:0.85rem;">
+    <form method="POST" action="{{ url_for('judge.claim_call', call_id=call.id) }}" class="timer-form">
+      <input type="text" name="judge_name" class="form-control judge-name-input" placeholder="Your name">
       <button type="submit" class="btn btn-primary btn-sm">Claim</button>
     </form>
   </div>
@@ -59,7 +59,7 @@
     </div>
     <div class="btn-group">
       <form method="POST" action="{{ url_for('judge.resolve_call', call_id=call.id) }}" class="inline-form">
-        <button type="submit" class="btn btn-outline btn-sm" style="color:var(--success);border-color:var(--success);">Resolve</button>
+        <button type="submit" class="btn btn-success-outline btn-sm">Resolve</button>
       </form>
       <form method="POST" action="{{ url_for('judge.reopen_call', call_id=call.id) }}" class="inline-form">
         <button type="submit" class="btn btn-outline btn-sm">Reopen</button>
@@ -73,7 +73,7 @@
 <!-- No active calls -->
 {% if not open_calls and not claimed_calls %}
 <div class="empty-state" style="padding:3rem;">
-  <h3 style="color:var(--success);">All clear</h3>
+  <h3 class="text-success">All clear</h3>
   <p>No pending judge calls.</p>
 </div>
 {% endif %}
@@ -86,7 +86,7 @@
     {% for call in resolved_calls %}
     <div class="judge-call call-resolved">
       <div class="call-info">
-        <div class="call-table" style="opacity:0.5;">T{{ call.table_number or '?' }}</div>
+        <div class="call-table opacity-50">T{{ call.table_number or '?' }}</div>
         <div>
           <span>{{ call.player_name }}</span>
           <span class="text-muted"> — {{ call.claimed_by or 'unclaimed' }}</span>
@@ -118,26 +118,4 @@ document.querySelectorAll('.call-ago').forEach(el => {
   setInterval(update, 10000);
 });
 </script>
-
-<style>
-.judge-call {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.85rem 1.15rem; background: var(--bg-card);
-  border: 1px solid var(--border); border-radius: var(--radius);
-  margin-bottom: 0.5rem; gap: 1rem;
-}
-.call-open { border-left: 4px solid var(--error); }
-.call-claimed { border-left: 4px solid var(--warning); }
-.call-resolved { opacity: 0.6; }
-.call-info { display: flex; align-items: center; gap: 1rem; flex: 1; flex-wrap: wrap; }
-.call-table {
-  font-size: 1.1rem; font-weight: 700; color: var(--accent);
-  min-width: 4rem;
-}
-.call-time { font-size: 0.8rem; }
-@media (max-width: 640px) {
-  .judge-call { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
-  .call-info { gap: 0.5rem; }
-}
-</style>
 {% endblock %}
