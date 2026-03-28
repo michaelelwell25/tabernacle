@@ -13,7 +13,7 @@
 
   <nav class="navbar">
     <div class="navbar-inner">
-      <a href="{{ url_for('tournament.list_tournaments') }}" class="navbar-brand">
+      <a href="{{ url_for('index') }}" class="navbar-brand">
         <span class="brand-icon">&#9876;</span> Tabernacle
       </a>
       <button class="nav-toggle" onclick="document.querySelector('.navbar-links').classList.toggle('open')" aria-label="Menu">&#9776;</button>
@@ -21,7 +21,11 @@
         <li><a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a></li>
         <li><a href="{{ url_for('league.list_leagues') }}">Leagues</a></li>
         <li class="nav-sep"></li>
-        <li><a href="{{ url_for('auth.logout') }}" style="color: var(--text-muted); font-size: 0.85rem;">Logout ({{ current_user.name }}{% if current_user.is_admin() %} · Admin{% endif %})</a></li>
+        <li><a href="{{ url_for('auth.profile') }}" style="font-size: 0.85rem;">{{ current_user.name }}{% if current_user.is_admin() %} · Admin{% endif %}</a></li>
+        {% if current_user.is_admin() %}
+        <li><a href="{{ url_for('admin.dashboard') }}" style="font-size: 0.85rem;">Admin</a></li>
+        {% endif %}
+        <li><a href="{{ url_for('auth.logout') }}" style="color: var(--text-muted); font-size: 0.85rem;">Logout</a></li>
         {% if tournament is defined and tournament %}
           {% if tournament.league %}
         <li class="nav-sep"></li>

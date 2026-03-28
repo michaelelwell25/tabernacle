@@ -1,6 +1,6 @@
 import os
 import traceback
-from flask import Flask, redirect, url_for, request, flash
+from flask import Flask, redirect, url_for, request, flash, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager, current_user
@@ -39,7 +39,7 @@ def create_app(config_name='development'):
     app.register_blueprint(auth_bp)
 
     # App blueprints
-    from app.routes import tournament, player, round_bp, results, standings, export_bp, playoff, judge, league
+    from app.routes import tournament, player, round_bp, results, standings, export_bp, playoff, judge, league, admin
     app.register_blueprint(tournament.bp)
     app.register_blueprint(player.bp)
     app.register_blueprint(round_bp.bp)
@@ -49,12 +49,39 @@ def create_app(config_name='development'):
     app.register_blueprint(playoff.bp)
     app.register_blueprint(judge.bp)
     app.register_blueprint(league.bp)
+    app.register_blueprint(admin.bp)
 
     from app import models
 
     @app.route('/')
     def index():
-        return redirect(url_for('tournament.list_tournaments'))
+        from app.models.tournament import Tournament
+        from app.models.league import League
+
+        if current_user.is_authenticated and current_user.is_admin():
+            tournaments = Tournament.query
+            leagues = League.query
+        elif current_user.is_authenticated:
+            tournaments = Tournament.query.filter_by(owner_id=current_user.id)
+            leagues = League.query.filter_by(owner_id=current_user.id)
+        else:
+            return redirect(url_for('auth.login'))
+
+        total_tournaments = tournaments.count()
+        active_tournaments = tournaments.filter(Tournament.status.in_(['active', 'playoffs'])).count()
+        total_leagues = leagues.count()
+        active_leagues = leagues.filter_by(status='active').count()
+        recent_tournaments = tournaments.order_by(Tournament.date.desc()).limit(5).all()
+        active_leagues_list = leagues.filter_by(status='active').all()
+
+        return render_template('home.html',
+            total_tournaments=total_tournaments,
+            active_tournaments=active_tournaments,
+            total_leagues=total_leagues,
+            active_leagues=active_leagues,
+            recent_tournaments=recent_tournaments,
+            active_leagues_list=active_leagues_list,
+        )
 
     @app.route('/health')
     def health():

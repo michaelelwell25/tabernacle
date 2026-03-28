@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Profile — Tabernacle{% endblock %}
+
+{% block content %}
+<style>
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  @media (max-width: 700px) {
+    .profile-grid { grid-template-columns: 1fr; }
+  }
+  .profile-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+  }
+  .profile-card h2 {
+    color: var(--accent);
+    font-size: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+  .profile-card label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+  }
+  .profile-card input[type="text"],
+  .profile-card input[type="email"],
+  .profile-card input[type="password"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    font-family: inherit;
+  }
+  .profile-card input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .profile-card .btn-auth {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--accent);
+    color: var(--bg-primary);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition);
+    font-family: inherit;
+  }
+  .profile-card .btn-auth:hover { background: var(--accent-hover); }
+</style>
+
+<h1 style="text-align: center; color: var(--accent); margin-bottom: 1.5rem;">Profile Settings</h1>
+
+<div class="profile-grid">
+  <div class="profile-card">
+    <h2>Account Details</h2>
+    <form method="POST" action="{{ url_for('auth.profile') }}">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" value="{{ current_user.name }}" required>
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" value="{{ current_user.email }}" required>
+
+      <button type="submit" class="btn-auth">Update Profile</button>
+    </form>
+  </div>
+
+  <div class="profile-card">
+    <h2>Change Password</h2>
+    <form method="POST" action="{{ url_for('auth.change_password') }}">
+      <label for="current_password">Current Password</label>
+      <input type="password" id="current_password" name="current_password" required>
+
+      <label for="new_password">New Password</label>
+      <input type="password" id="new_password" name="new_password" required minlength="6">
+
+      <label for="confirm_password">Confirm New Password</label>
+      <input type="password" id="confirm_password" name="confirm_password" required minlength="6">
+
+      <button type="submit" class="btn-auth">Change Password</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

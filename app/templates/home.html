@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Home - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="tournament-hero">
+  <h1>Welcome, {{ current_user.name }}{% if current_user.is_admin() %} <span class="badge badge-blue">Admin</span>{% endif %}</h1>
+</div>
+
+<!-- Quick Stats -->
+<div class="card-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 2rem;">
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--accent);">{{ total_tournaments }}</div>
+    <div class="card-meta">Total Tournaments</div>
+  </div>
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--success);">{{ active_tournaments }}</div>
+    <div class="card-meta">Active Tournaments</div>
+  </div>
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--accent);">{{ total_leagues }}</div>
+    <div class="card-meta">Total Leagues</div>
+  </div>
+  <div class="card" style="text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--success);">{{ active_leagues }}</div>
+    <div class="card-meta">Active Leagues</div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+  <a href="{{ url_for('tournament.create_tournament') }}" class="btn btn-primary">+ Create Tournament</a>
+  <a href="{{ url_for('league.create') }}" class="btn btn-primary">+ Create League</a>
+</div>
+
+<!-- Recent Tournaments -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <h2>Recent Tournaments</h2>
+  <a href="{{ url_for('tournament.list_tournaments') }}">View All &rarr;</a>
+</div>
+
+{% if recent_tournaments %}
+<div class="card-grid" style="margin-bottom: 2rem;">
+  {% for t in recent_tournaments %}
+  <a href="{{ url_for('tournament.view_tournament', tournament_id=t.id) }}" class="card-link">
+    <div class="card">
+      <div class="card-title">{{ t.name }}</div>
+      <div class="card-meta">
+        <span>{{ t.date.strftime('%b %d, %Y') if t.date else 'No date' }}</span>
+        <span>&middot;</span>
+        {% if t.status == 'registration' %}
+        <span class="badge badge-blue">Registration</span>
+        {% elif t.status == 'active' %}
+        <span class="badge badge-green">Active</span>
+        {% elif t.status == 'playoffs' %}
+        <span class="badge badge-blue">Playoffs</span>
+        {% else %}
+        <span class="badge badge-gray">Completed</span>
+        {% endif %}
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="margin-bottom: 2rem;">
+  <div class="empty-icon">&#9876;</div>
+  <h3>No tournaments yet</h3>
+  <p>Create your first tournament to get started.</p>
+</div>
+{% endif %}
+
+<!-- Active Leagues -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+  <h2>Active Leagues</h2>
+  <a href="{{ url_for('league.list_leagues') }}">View All &rarr;</a>
+</div>
+
+{% if active_leagues_list %}
+<div class="card-grid">
+  {% for l in active_leagues_list %}
+  <a href="{{ url_for('league.dashboard', league_id=l.id) }}" class="card-link">
+    <div class="card">
+      <div class="card-title">{{ l.name }}</div>
+      <div class="card-meta">
+        <span>{{ l.get_completed_weeks() }} / {{ l.num_weeks }} weeks</span>
+        <span>&middot;</span>
+        <span class="badge badge-green">Active</span>
+        <span>&middot;</span>
+        <span>{{ l.league_players.count() }} players</span>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">&#9876;</div>
+  <h3>No active leagues</h3>
+  <p>Create a league to track standings across multiple weeks.</p>
+</div>
+{% endif %}
+{% endblock %}

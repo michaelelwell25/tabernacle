@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Admin - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Admin Panel</h1>
+</div>
+
+{% if user_data %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Created</th>
+        <th>Tournaments</th>
+        <th>Leagues</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in user_data %}
+      <tr>
+        <td>{{ d.user.name }}</td>
+        <td>{{ d.user.email }}</td>
+        <td>
+          {% if d.user.is_admin() %}
+          <span class="badge badge-green">Admin</span>
+          {% else %}
+          <span class="badge badge-blue">TO</span>
+          {% endif %}
+        </td>
+        <td>{{ d.user.created_at.strftime('%b %d, %Y') }}</td>
+        <td>{{ d.tournament_count }}</td>
+        <td>{{ d.league_count }}</td>
+        <td class="actions-cell">
+          {% if d.user.id != current_user.id %}
+          <form method="POST" action="{{ url_for('admin.toggle_role', user_id=d.user.id) }}" style="display:inline">
+            <button type="submit" class="btn btn-outline btn-sm">
+              {% if d.user.is_admin() %}Demote{% else %}Promote{% endif %}
+            </button>
+          </form>
+          <form method="POST" action="{{ url_for('admin.delete_user', user_id=d.user.id) }}" style="display:inline"
+                onsubmit="return confirm('Delete {{ d.user.name }}? Their tournaments and leagues will be reassigned to you.')">
+            <button type="submit" class="btn btn-outline btn-sm" style="color: #e55; border-color: #e55;">Delete</button>
+          </form>
+          {% else %}
+          <span style="color: var(--text-muted); font-size: 0.85rem;">You</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <h3>No users found</h3>
+</div>
+{% endif %}
+{% endblock %}
