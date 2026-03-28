@@ -20,6 +20,8 @@ def list_tournaments():
 @bp.route('/create', methods=['GET', 'POST'])
 def create_tournament():
     """Create a new tournament"""
+    if current_user.is_player():
+        abort(403)
     if request.method == 'POST':
         name = request.form.get('name')
         date_str = request.form.get('date')

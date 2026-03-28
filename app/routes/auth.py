@@ -2,6 +2,7 @@ from flask import Blueprint, request, redirect, url_for, render_template, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models.user import User
+from app.models.invite import InviteToken
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -9,7 +10,7 @@ auth_bp = Blueprint('auth', __name__)
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('tournament.list_tournaments'))
+        return redirect(url_for('index'))
 
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
@@ -18,7 +19,7 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
             login_user(user, remember=True)
-            next_url = request.args.get('next') or url_for('tournament.list_tournaments')
+            next_url = request.args.get('next') or url_for('index')
             return redirect(next_url)
 
         flash('Invalid email or password', 'error')
@@ -29,45 +30,63 @@ def login():
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('tournament.list_tournaments'))
+        return redirect(url_for('index'))
+
+    token_str = request.args.get('token', '')
+    invite = None
+    if token_str:
+        invite = InviteToken.query.filter_by(token=token_str, used_by_id=None).first()
 
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         confirm = request.form.get('confirm_password', '')
+        token_str = request.form.get('token', '')
+
+        if token_str:
+            invite = InviteToken.query.filter_by(token=token_str, used_by_id=None).first()
 
         if not name or not email or not password:
             flash('All fields are required', 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', invite=invite, token=token_str)
 
         if password != confirm:
             flash('Passwords do not match', 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', invite=invite, token=token_str)
 
         if len(password) < 6:
             flash('Password must be at least 6 characters', 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', invite=invite, token=token_str)
 
         if User.query.filter_by(email=email).first():
             flash('An account with that email already exists', 'error')
-            return render_template('auth/register.html')
+            return render_template('auth/register.html', invite=invite, token=token_str)
 
         user = User(name=name, email=email)
         user.set_password(password)
 
-        # First user gets admin role
+        # First user gets admin
         if User.query.count() == 0:
             user.role = 'admin'
+        elif invite:
+            user.role = invite.role
+            invite.used_by_id = user.id
+        else:
+            user.role = 'player'
 
         db.session.add(user)
         db.session.commit()
 
+        if invite:
+            invite.used_by_id = user.id
+            db.session.commit()
+
         login_user(user, remember=True)
         flash(f'Welcome to Tabernacle, {name}!', 'success')
-        return redirect(url_for('tournament.list_tournaments'))
+        return redirect(url_for('index'))
 
-    return render_template('auth/register.html')
+    return render_template('auth/register.html', invite=invite, token=token_str)
 
 
 @auth_bp.route('/logout')

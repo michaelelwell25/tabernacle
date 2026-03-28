@@ -27,6 +27,8 @@ def list_leagues():
 
 @bp.route('/create', methods=['GET', 'POST'])
 def create():
+    if current_user.is_player():
+        abort(403)
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         num_weeks = request.form.get('num_weeks', 0, type=int)

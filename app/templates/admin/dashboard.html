@@ -6,6 +6,7 @@
   <h1>Admin Panel</h1>
 </div>
 
+<h2 style="margin-bottom: 1rem;">Users</h2>
 {% if user_data %}
 <div class="table-wrap">
   <table class="data-table">
@@ -28,8 +29,10 @@
         <td>
           {% if d.user.is_admin() %}
           <span class="badge badge-green">Admin</span>
-          {% else %}
+          {% elif d.user.is_to() %}
           <span class="badge badge-blue">TO</span>
+          {% else %}
+          <span class="badge badge-gray">Player</span>
           {% endif %}
         </td>
         <td>{{ d.user.created_at.strftime('%b %d, %Y') }}</td>
@@ -39,7 +42,7 @@
           {% if d.user.id != current_user.id %}
           <form method="POST" action="{{ url_for('admin.toggle_role', user_id=d.user.id) }}" style="display:inline">
             <button type="submit" class="btn btn-outline btn-sm">
-              {% if d.user.is_admin() %}Demote{% else %}Promote{% endif %}
+              {% if d.user.is_admin() %}Demote to TO{% elif d.user.is_to() %}Demote to Player{% else %}Promote to TO{% endif %}
             </button>
           </form>
           <form method="POST" action="{{ url_for('admin.delete_user', user_id=d.user.id) }}" style="display:inline"
@@ -59,5 +62,53 @@
 <div class="empty-state">
   <h3>No users found</h3>
 </div>
+{% endif %}
+
+<h2 style="margin-top: 2.5rem; margin-bottom: 1rem;">TO Invite Links</h2>
+<p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+  Generate invite links to let people register as Tournament Organizers. Each link can only be used once.
+</p>
+
+<form method="POST" action="{{ url_for('admin.create_invite') }}" style="margin-bottom: 1.5rem;">
+  <button type="submit" class="btn btn-primary">Generate TO Invite Link</button>
+</form>
+
+{% if invites %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Invite Link</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in invites %}
+      <tr>
+        <td>
+          <code style="font-size: 0.8rem; word-break: break-all; color: var(--accent);">{{ url_for('auth.register', token=inv.token, _external=True) }}</code>
+        </td>
+        <td>
+          {% if inv.is_used %}
+          <span class="badge badge-gray">Used by {{ inv.used_by.name }}</span>
+          {% else %}
+          <span class="badge badge-green">Available</span>
+          {% endif %}
+        </td>
+        <td>{{ inv.created_at.strftime('%b %d, %Y') }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin.delete_invite', invite_id=inv.id) }}" style="display:inline">
+            <button type="submit" class="btn btn-outline btn-sm" style="color: #e55; border-color: #e55;">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p style="color: var(--text-muted);">No invite links yet.</p>
 {% endif %}
 {% endblock %}

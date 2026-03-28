@@ -11,6 +11,7 @@ from app.models.seat_history import SeatHistory
 from app.models.league import League
 from app.models.league_player import LeaguePlayer
 from app.models.league_player_link import LeaguePlayerLink
+from app.models.invite import InviteToken
 
 __all__ = [
     'User',
@@ -26,4 +27,5 @@ __all__ = [
     'League',
     'LeaguePlayer',
     'LeaguePlayerLink',
+    'InviteToken',
 ]

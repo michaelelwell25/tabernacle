@@ -55,17 +55,21 @@ def create_app(config_name='development'):
 
     @app.route('/')
     def index():
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+
         from app.models.tournament import Tournament
         from app.models.league import League
 
-        if current_user.is_authenticated and current_user.is_admin():
+        if current_user.is_player():
+            return render_template('home_player.html')
+
+        if current_user.is_admin():
             tournaments = Tournament.query
             leagues = League.query
-        elif current_user.is_authenticated:
+        else:
             tournaments = Tournament.query.filter_by(owner_id=current_user.id)
             leagues = League.query.filter_by(owner_id=current_user.id)
-        else:
-            return redirect(url_for('auth.login'))
 
         total_tournaments = tournaments.count()
         active_tournaments = tournaments.filter(Tournament.status.in_(['active', 'playoffs'])).count()

@@ -92,7 +92,11 @@
 <body>
   <div class="auth-card">
     <h1>&#9876; Tabernacle</h1>
+    {% if invite %}
     <p class="subtitle">Create Your TO Account</p>
+    {% else %}
+    <p class="subtitle">Create Your Player Account</p>
+    {% endif %}
 
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -103,8 +107,11 @@
     {% endwith %}
 
     <form method="POST">
+      {% if token %}
+      <input type="hidden" name="token" value="{{ token }}">
+      {% endif %}
       <label for="name">Name</label>
-      <input type="text" id="name" name="name" placeholder="Your name or store name" autofocus required>
+      <input type="text" id="name" name="name" placeholder="{% if invite %}Your name or store name{% else %}Your player name{% endif %}" autofocus required>
 
       <label for="email">Email</label>
       <input type="email" id="email" name="email" required>
