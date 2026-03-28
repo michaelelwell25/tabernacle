@@ -10,8 +10,8 @@ from app.models.pod_assignment import PodAssignment
 from app.models.pairing_history import PairingHistory
 
 
-def create_league(name, num_weeks):
-    league = League(name=name, num_weeks=num_weeks)
+def create_league(name, num_weeks, owner_id=None):
+    league = League(name=name, num_weeks=num_weeks, owner_id=owner_id)
     db.session.add(league)
     db.session.commit()
     return league
@@ -38,6 +38,7 @@ def create_week_tournament(league, week_number, tournament_name=None, tournament
         round_timer_minutes=round_timer_minutes,
         league_id=league.id,
         week_number=week_number,
+        owner_id=league.owner_id,
         status='registration'
     )
     db.session.add(t)

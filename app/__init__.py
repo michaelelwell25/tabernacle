@@ -1,14 +1,22 @@
 import os
 import traceback
-from flask import Flask, session, redirect, url_for, request, render_template_string, flash
+from flask import Flask, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_login import LoginManager, current_user
 
 db = SQLAlchemy()
 migrate = Migrate()
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login'
+login_manager.login_message_category = 'info'
 
 # Public routes that don't need auth
-PUBLIC_ENDPOINTS = {'player.join_tournament', 'player.moxfield_fetch', 'judge.create_call', 'auth.login', 'health', 'static'}
+PUBLIC_ENDPOINTS = {
+    'player.join_tournament', 'player.moxfield_fetch',
+    'judge.create_call', 'auth.login', 'auth.register',
+    'auth.logout', 'health', 'static',
+}
 
 
 def create_app(config_name='development'):
@@ -19,6 +27,12 @@ def create_app(config_name='development'):
 
     db.init_app(app)
     migrate.init_app(app, db)
+    login_manager.init_app(app)
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        from app.models.user import User
+        return User.query.get(int(user_id))
 
     # Auth blueprint
     from app.routes.auth import auth_bp
@@ -48,15 +62,11 @@ def create_app(config_name='development'):
 
     @app.before_request
     def require_auth():
-        admin_pw = os.environ.get('ADMIN_PASSWORD') or app.config.get('ADMIN_PASSWORD')
-        if not admin_pw:
-            return  # No password set = no auth required (local dev)
-
         endpoint = request.endpoint
         if endpoint in PUBLIC_ENDPOINTS or (endpoint and endpoint.startswith('static')):
             return
 
-        if not session.get('authenticated'):
+        if not current_user.is_authenticated:
             return redirect(url_for('auth.login', next=request.url))
 
     @app.errorhandler(500)

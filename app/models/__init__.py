@@ -1,3 +1,4 @@
+from app.models.user import User
 from app.models.tournament import Tournament
 from app.models.player import Player
 from app.models.round import Round
@@ -12,6 +13,7 @@ from app.models.league_player import LeaguePlayer
 from app.models.league_player_link import LeaguePlayerLink
 
 __all__ = [
+    'User',
     'Tournament',
     'Player',
     'Round',

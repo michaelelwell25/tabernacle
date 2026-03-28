@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
+from flask_login import current_user
 from datetime import datetime
 from app import db
 from app.models.tournament import Tournament
@@ -9,7 +10,10 @@ bp = Blueprint('tournament', __name__, url_prefix='/tournaments')
 @bp.route('/')
 def list_tournaments():
     """List all tournaments"""
-    tournaments = Tournament.query.filter_by(league_id=None).order_by(Tournament.date.desc()).all()
+    q = Tournament.query.filter_by(league_id=None)
+    if not current_user.is_admin():
+        q = q.filter_by(owner_id=current_user.id)
+    tournaments = q.order_by(Tournament.date.desc()).all()
     return render_template('tournament/list.html', tournaments=tournaments)
 
 
@@ -50,6 +54,7 @@ def create_tournament():
             seat_scoring=seat_scoring,
             seat_win_points=seat_win_points,
             seat_draw_points=seat_draw_points,
+            owner_id=current_user.id,
             status='registration'
         )
 
@@ -66,6 +71,8 @@ def create_tournament():
 def view_tournament(tournament_id):
     """View tournament dashboard"""
     tournament = Tournament.query.get_or_404(tournament_id)
+    if not current_user.is_admin() and tournament.owner_id != current_user.id:
+        abort(403)
     from app.models.round import Round
     players = tournament.get_active_players()
     rounds = tournament.rounds.order_by(Round.round_number).all()
@@ -138,6 +145,8 @@ def toggle_seat_scoring(tournament_id):
 def delete_tournament(tournament_id):
     """Delete a tournament"""
     tournament = Tournament.query.get_or_404(tournament_id)
+    if not current_user.is_admin() and tournament.owner_id != current_user.id:
+        abort(403)
 
     db.session.delete(tournament)
     db.session.commit()

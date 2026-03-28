@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort
+from flask_login import current_user
 from datetime import datetime
 from app import db
 from app.models.league import League
@@ -17,7 +18,10 @@ bp = Blueprint('league', __name__, url_prefix='/leagues')
 
 @bp.route('/')
 def list_leagues():
-    leagues = League.query.order_by(League.created_at.desc()).all()
+    q = League.query
+    if not current_user.is_admin():
+        q = q.filter_by(owner_id=current_user.id)
+    leagues = q.order_by(League.created_at.desc()).all()
     return render_template('league/list.html', leagues=leagues)
 
 
@@ -34,7 +38,7 @@ def create():
             flash('Number of weeks must be at least 1', 'error')
             return render_template('league/create.html')
 
-        league = create_league(name, num_weeks)
+        league = create_league(name, num_weeks, owner_id=current_user.id)
         flash(f'League "{name}" created!', 'success')
         return redirect(url_for('league.dashboard', league_id=league.id))
 
@@ -44,6 +48,8 @@ def create():
 @bp.route('/<int:league_id>')
 def dashboard(league_id):
     league = League.query.get_or_404(league_id)
+    if not current_user.is_admin() and league.owner_id != current_user.id:
+        abort(403)
     tournaments = league.tournaments.order_by(Tournament.week_number).all()
     standings = calculate_league_standings(league)
     roster_count = league.league_players.count()
@@ -197,6 +203,8 @@ def complete_league(league_id):
 @bp.route('/<int:league_id>/delete', methods=['POST'])
 def delete_league(league_id):
     league = League.query.get_or_404(league_id)
+    if not current_user.is_admin() and league.owner_id != current_user.id:
+        abort(403)
     name = league.name
     db.session.delete(league)
     db.session.commit()

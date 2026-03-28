@@ -8,6 +8,7 @@ class League(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     num_weeks = db.Column(db.Integer, nullable=False)
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     status = db.Column(db.String(20), default='active')  # active, completed
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
