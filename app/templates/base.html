@@ -21,7 +21,7 @@
         <li><a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a></li>
         <li><a href="{{ url_for('league.list_leagues') }}">Leagues</a></li>
         <li class="nav-sep"></li>
-        <li><a href="{{ url_for('auth.logout') }}" style="color: var(--text-muted); font-size: 0.85rem;">Logout ({{ current_user.name }})</a></li>
+        <li><a href="{{ url_for('auth.logout') }}" style="color: var(--text-muted); font-size: 0.85rem;">Logout ({{ current_user.name }}{% if current_user.is_admin() %} · Admin{% endif %})</a></li>
         {% if tournament is defined and tournament %}
           {% if tournament.league %}
         <li class="nav-sep"></li>
