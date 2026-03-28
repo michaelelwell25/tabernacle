@@ -13,6 +13,17 @@ with app.app_context():
         "ALTER TABLE tournaments ADD COLUMN owner_id INTEGER REFERENCES users(id)",
         "ALTER TABLE leagues ADD COLUMN owner_id INTEGER REFERENCES users(id)",
     ]
+    # Ensure first user is always admin (handles role default changes)
+    try:
+        from app.models.user import User
+        first_user = User.query.order_by(User.id).first()
+        if first_user and first_user.role != 'admin':
+            first_user.role = 'admin'
+            db.session.commit()
+            print(f"[wsgi] Promoted {first_user.email} to admin")
+    except Exception:
+        db.session.rollback()
+
     for stmt in alter_statements:
         try:
             db.session.execute(db.text(stmt))
