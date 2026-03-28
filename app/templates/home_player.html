@@ -4,8 +4,59 @@
 {% block content %}
 <div class="page-header">
   <h1>Welcome, {{ current_user.name }}</h1>
-  <p style="color: var(--text-secondary);">Player Account</p>
 </div>
+
+{% if active_tournaments %}
+<h2 style="margin-bottom: 1rem;">Active Tournaments</h2>
+<div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); margin-bottom: 2rem;">
+  {% for a in active_tournaments %}
+  <div class="card" style="padding: 1.5rem;">
+    <div class="card-title" style="margin-bottom: 0.5rem;">{{ a.tournament.name }}</div>
+    <div class="card-meta" style="margin-bottom: 1rem;">
+      {% if a.tournament.status == 'registration' %}
+      <span class="badge badge-blue">Registration</span>
+      {% elif a.tournament.status == 'active' %}
+      <span class="badge badge-green">Round {{ a.round_number }}</span>
+      {% elif a.tournament.status == 'playoffs' %}
+      <span class="badge badge-green">Playoffs</span>
+      {% endif %}
+      <span>&middot;</span>
+      <span>Playing as {{ a.player.commander or a.player.name }}</span>
+    </div>
+
+    {% if a.table is not none %}
+    <div style="background: var(--bg-elevated); border-radius: var(--radius); padding: 1rem; margin-bottom: 0.75rem;">
+      {% if a.is_bye %}
+      <div style="font-size: 1.1rem; font-weight: 600; color: var(--warning);">Bye Round</div>
+      {% else %}
+      <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">
+        Table {{ a.table }} &middot; Seat {{ a.seat }}
+      </div>
+      <div style="color: var(--text-secondary); font-size: 0.9rem;">
+        <strong>Opponents:</strong>
+        {% for opp in a.opponents %}
+        {{ opp }}{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% elif a.tournament.status == 'active' %}
+    <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">
+      Waiting for pairings...
+    </div>
+    {% endif %}
+
+    {% if a.timer_end %}
+    <div style="color: var(--text-muted); font-size: 0.85rem;" id="timer-{{ a.tournament.id }}">
+      Round ends: <span class="timer-value" data-end="{{ a.timer_end.isoformat() }}Z"></span>
+    </div>
+    {% endif %}
+
+    <a href="{{ url_for('player.join_tournament', tournament_id=a.tournament.id) }}" class="btn btn-outline btn-sm" style="margin-top: 0.5rem;">View Tournament</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
 <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 2rem;">
   <div class="card" style="padding: 2rem;">
@@ -33,4 +84,28 @@
   </p>
   <a href="{{ url_for('auth.profile') }}" class="btn btn-primary">Edit Profile</a>
 </div>
+
+{% if active_tournaments %}
+<script>
+(function() {
+  document.querySelectorAll('.timer-value').forEach(function(el) {
+    var end = new Date(el.dataset.end);
+    function update() {
+      var now = new Date();
+      var diff = Math.max(0, Math.floor((end - now) / 1000));
+      if (diff <= 0) {
+        el.textContent = 'Time!';
+        el.style.color = 'var(--error)';
+        return;
+      }
+      var m = Math.floor(diff / 60);
+      var s = diff % 60;
+      el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+      setTimeout(update, 1000);
+    }
+    update();
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

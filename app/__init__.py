@@ -62,7 +62,64 @@ def create_app(config_name='development'):
         from app.models.league import League
 
         if current_user.is_player():
-            return render_template('home_player.html')
+            from app.models.player import Player
+            from app.models.pod_assignment import PodAssignment
+            from app.models.pod import Pod
+            from app.models.round import Round
+
+            # Find active tournaments this player is in
+            active_records = (
+                Player.query
+                .join(Tournament)
+                .filter(
+                    Player.user_id == current_user.id,
+                    Player.dropped == False,
+                    Tournament.status.in_(['active', 'registration', 'playoffs'])
+                )
+                .all()
+            )
+
+            active_tournaments = []
+            for p in active_records:
+                t = p.tournament
+                info = {
+                    'tournament': t,
+                    'player': p,
+                    'table': None,
+                    'seat': None,
+                    'opponents': [],
+                    'is_bye': False,
+                    'round_number': t.current_round,
+                    'timer_end': None,
+                }
+
+                # Get current round seating
+                if t.current_round and t.current_round > 0:
+                    current_round = t.get_current_round()
+                    if current_round:
+                        info['timer_end'] = current_round.timer_end
+                        assignment = (
+                            PodAssignment.query
+                            .join(Pod)
+                            .filter(
+                                Pod.round_id == current_round.id,
+                                PodAssignment.player_id == p.id
+                            )
+                            .first()
+                        )
+                        if assignment:
+                            pod = assignment.pod
+                            info['table'] = pod.table_number
+                            info['seat'] = assignment.seat_position
+                            info['is_bye'] = pod.is_bye
+                            info['opponents'] = [
+                                a.player.name for a in pod.assignments
+                                if a.player_id != p.id
+                            ]
+
+                active_tournaments.append(info)
+
+            return render_template('home_player.html', active_tournaments=active_tournaments)
 
         if current_user.is_admin():
             tournaments = Tournament.query
