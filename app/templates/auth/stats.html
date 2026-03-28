@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}My Stats - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>My Stats</h1>
+</div>
+
+<div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 2rem;">
+  <div class="card" style="padding: 1.5rem; text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--accent);">{{ tournaments_played }}</div>
+    <div style="color: var(--text-secondary); font-size: 0.85rem;">Tournaments</div>
+  </div>
+  <div class="card" style="padding: 1.5rem; text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--accent);">{{ total_matches }}</div>
+    <div style="color: var(--text-secondary); font-size: 0.85rem;">Matches Played</div>
+  </div>
+  <div class="card" style="padding: 1.5rem; text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--success);">{{ total_wins }}</div>
+    <div style="color: var(--text-secondary); font-size: 0.85rem;">Wins</div>
+  </div>
+  <div class="card" style="padding: 1.5rem; text-align: center;">
+    <div style="font-size: 2rem; font-weight: 700; color: var(--info);">{{ "%.1f"|format(win_rate) }}%</div>
+    <div style="color: var(--text-secondary); font-size: 0.85rem;">Win Rate</div>
+  </div>
+</div>
+
+<h2 style="margin-bottom: 1rem;">Tournament History</h2>
+{% if tournament_history %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Tournament</th>
+        <th>Date</th>
+        <th>Commander</th>
+        <th>Matches</th>
+        <th>Wins</th>
+        <th>Points</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in tournament_history %}
+      <tr>
+        <td>{{ h.tournament.name }}</td>
+        <td>{{ h.tournament.date.strftime('%b %d, %Y') if h.tournament.date else 'N/A' }}</td>
+        <td style="color: var(--text-secondary);">{{ h.commander or '-' }}</td>
+        <td>{{ h.matches }}</td>
+        <td>{{ h.wins }}</td>
+        <td>{{ h.points }}</td>
+        <td>
+          {% if h.dropped %}
+          <span class="badge badge-gray">Dropped</span>
+          {% elif h.tournament.status == 'completed' %}
+          <span class="badge badge-green">Completed</span>
+          {% else %}
+          <span class="badge badge-blue">Active</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">&#9876;</div>
+  <h3>No tournament history yet</h3>
+  <p>Join a tournament to start tracking your stats. Your TO will share a join link with you.</p>
+</div>
+{% endif %}
+{% endblock %}

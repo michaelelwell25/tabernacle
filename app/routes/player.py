@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import current_user
 from app import db
 from app.models.tournament import Tournament
 from app.models.player import Player
@@ -113,7 +114,8 @@ def join_tournament(tournament_id):
             tournament_id=tournament_id,
             name=name,
             commander=commander if commander else None,
-            decklist_url=decklist_url if decklist_url else None
+            decklist_url=decklist_url if decklist_url else None,
+            user_id=current_user.id if current_user.is_authenticated else None
         )
         db.session.add(player)
         db.session.commit()

@@ -12,6 +12,7 @@ with app.app_context():
         "ALTER TABLE tournaments ADD COLUMN week_number INTEGER",
         "ALTER TABLE tournaments ADD COLUMN owner_id INTEGER REFERENCES users(id)",
         "ALTER TABLE leagues ADD COLUMN owner_id INTEGER REFERENCES users(id)",
+        "ALTER TABLE players ADD COLUMN user_id INTEGER REFERENCES users(id)",
     ]
     # Ensure first user is always admin (handles role default changes)
     try:

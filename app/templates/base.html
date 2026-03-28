@@ -21,6 +21,8 @@
         {% if current_user.is_authenticated and current_user.is_to() %}
         <li><a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a></li>
         <li><a href="{{ url_for('league.list_leagues') }}">Leagues</a></li>
+        {% elif current_user.is_authenticated and current_user.is_player() %}
+        <li><a href="{{ url_for('auth.my_stats') }}">My Stats</a></li>
         {% endif %}
         <li class="nav-sep"></li>
         <li><a href="{{ url_for('auth.profile') }}" style="font-size: 0.85rem;">{{ current_user.name }}{% if current_user.is_admin() %} · Admin{% elif current_user.is_authenticated and current_user.is_player() %} · Player{% endif %}</a></li>

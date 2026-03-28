@@ -10,6 +10,7 @@ class Player(db.Model):
     name = db.Column(db.String(100), nullable=False)
     commander = db.Column(db.String(100))  # Commander name
     decklist_url = db.Column(db.String(500))  # Moxfield or other decklist link
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     dci_number = db.Column(db.String(20))  # Optional DCI/Arena ID
     dropped = db.Column(db.Boolean, default=False)
     drop_round = db.Column(db.Integer)  # Round when player dropped

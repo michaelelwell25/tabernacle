@@ -3,6 +3,8 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.models.user import User
 from app.models.invite import InviteToken
+from app.models.player import Player
+from app.models.pod_assignment import PodAssignment
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -143,3 +145,43 @@ def change_password():
     db.session.commit()
     flash('Password changed', 'success')
     return redirect(url_for('auth.profile'))
+
+
+@auth_bp.route('/my-stats')
+@login_required
+def my_stats():
+    player_records = current_user.player_records.all()
+
+    tournaments_played = len(player_records)
+    total_matches = 0
+    total_wins = 0
+    total_pods = 0
+    tournament_history = []
+
+    for p in player_records:
+        t = p.tournament
+        assignments = p.pod_assignments.filter(PodAssignment.points_earned.isnot(None)).all()
+        matches = len(assignments)
+        wins = sum(1 for a in assignments if a.placement == 1)
+        total_matches += matches
+        total_wins += wins
+        total_pods += matches
+
+        tournament_history.append({
+            'tournament': t,
+            'matches': matches,
+            'wins': wins,
+            'points': p.get_total_points(),
+            'commander': p.commander,
+            'dropped': p.dropped,
+        })
+
+    win_rate = (total_wins / total_matches * 100) if total_matches > 0 else 0
+
+    return render_template('auth/stats.html',
+        tournaments_played=tournaments_played,
+        total_matches=total_matches,
+        total_wins=total_wins,
+        win_rate=win_rate,
+        tournament_history=tournament_history,
+    )

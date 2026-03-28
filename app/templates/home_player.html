@@ -7,12 +7,22 @@
   <p style="color: var(--text-secondary);">Player Account</p>
 </div>
 
-<div class="card" style="padding: 2rem; margin-bottom: 2rem;">
-  <h2 style="margin-bottom: 0.75rem;">How It Works</h2>
-  <p style="color: var(--text-secondary); line-height: 1.8;">
-    Your Tournament Organizer will share a link to join each tournament or league week.
-    Once you've joined, you can view pairings, submit results, and track your standings.
-  </p>
+<div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 2rem;">
+  <div class="card" style="padding: 2rem;">
+    <h2 style="margin-bottom: 0.75rem;">My Stats</h2>
+    <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+      View your match history, win rate, and tournament results.
+    </p>
+    <a href="{{ url_for('auth.my_stats') }}" class="btn btn-primary">View Stats</a>
+  </div>
+
+  <div class="card" style="padding: 2rem;">
+    <h2 style="margin-bottom: 0.75rem;">How It Works</h2>
+    <p style="color: var(--text-secondary); line-height: 1.8;">
+      Your Tournament Organizer will share a link to join each tournament or league week.
+      Once you've joined, you can view pairings and track standings.
+    </p>
+  </div>
 </div>
 
 <div class="card" style="padding: 2rem;">
