@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Standings - {{ league.name }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('league.list_leagues') }}">Leagues</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('league.dashboard', league_id=league.id) }}">{{ league.name }}</a>
+  <span class="sep"></span>
+  <span>Standings</span>
+</div>
+
+<div class="page-header">
+  <h1>League Standings</h1>
+</div>
+
+{% if standings %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Player</th>
+        <th>Points</th>
+        <th>Record</th>
+        <th>Win%</th>
+        <th>OW%</th>
+        <th>Weeks</th>
+        <th>Joined</th>
+        <th>Late Bonus</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in standings %}
+      <tr>
+        <td>{{ s.rank }}</td>
+        <td><a href="{{ url_for('league.player_detail', league_id=league.id, lp_id=s.league_player.id) }}">{{ s.league_player.name }}</a></td>
+        <td><strong>{{ s.league_points }}</strong></td>
+        <td>{{ s.wins }}-{{ s.losses }}</td>
+        <td>{{ "%.1f"|format(s.win_pct * 100) }}%</td>
+        <td>{{ "%.1f"|format(s.opp_win_pct * 100) }}%</td>
+        <td>{{ s.weeks_played }}</td>
+        <td>Week {{ s.joined_week }}</td>
+        <td>{% if s.late_join_pts > 0 %}+{{ s.late_join_pts }}{% else %}&mdash;{% endif %}</td>
+      </tr>
+
+      <!-- Expandable week-by-week breakdown -->
+      <tr class="detail-row" style="display: none;" id="detail-{{ s.league_player.id }}">
+        <td colspan="9">
+          <div class="detail-content">
+            <table class="data-table data-table-nested">
+              <thead>
+                <tr>
+                  <th>Week</th>
+                  <th>Commander</th>
+                  <th>W</th>
+                  <th>L</th>
+                  <th>Pts Earned</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for wk in range(1, league.num_weeks + 1) %}
+                {% if wk in s.weekly %}
+                <tr>
+                  <td>{{ wk }}</td>
+                  <td>{{ s.weekly[wk].commander or '&mdash;' }}</td>
+                  <td>{{ s.weekly[wk].wins }}</td>
+                  <td>{{ s.weekly[wk].losses }}</td>
+                  <td>{{ s.weekly[wk].wins * 2 + s.weekly[wk].losses }}</td>
+                </tr>
+                {% else %}
+                <tr class="text-secondary">
+                  <td>{{ wk }}</td>
+                  <td colspan="4">{% if wk < s.joined_week %}Not joined{% else %}Did not play{% endif %}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+document.querySelectorAll('.data-table tbody tr:not(.detail-row)').forEach(row => {
+  const detailId = row.querySelector('a') ?
+    'detail-' + row.querySelector('a').href.split('/').pop() : null;
+  if (!detailId) return;
+  const detail = document.getElementById(detailId);
+  if (!detail) return;
+  row.style.cursor = 'pointer';
+  row.addEventListener('click', e => {
+    if (e.target.tagName === 'A') return;
+    detail.style.display = detail.style.display === 'none' ? '' : 'none';
+  });
+});
+</script>
+{% else %}
+<div class="empty-state">
+  <h3>No standings yet</h3>
+  <p>Complete a week's tournament to see league standings.</p>
+</div>
+{% endif %}
+{% endblock %}

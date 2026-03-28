@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Leagues - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="tournament-hero">
+  <h1>Leagues</h1>
+  <a href="{{ url_for('league.create') }}" class="btn btn-primary btn-lg">+ Create League</a>
+</div>
+
+{% if leagues %}
+<div class="card-grid">
+  {% for l in leagues %}
+  <a href="{{ url_for('league.dashboard', league_id=l.id) }}" class="card-link">
+    <div class="card">
+      <div class="card-title">{{ l.name }}</div>
+      <div class="card-meta">
+        <span>{{ l.get_completed_weeks() }} / {{ l.num_weeks }} weeks</span>
+        <span>&middot;</span>
+        {% if l.status == 'active' %}
+        <span class="badge badge-green">Active</span>
+        {% else %}
+        <span class="badge badge-gray">Completed</span>
+        {% endif %}
+        <span>&middot;</span>
+        <span>{{ l.league_players.count() }} players</span>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">&#9876;</div>
+  <h3>No leagues yet</h3>
+  <p>Create your first league to track standings across multiple weeks.</p>
+  <a href="{{ url_for('league.create') }}" class="btn btn-primary btn-lg">+ Create League</a>
+</div>
+{% endif %}
+{% endblock %}

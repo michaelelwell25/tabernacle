@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Add Players - Week {{ week_number }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('league.list_leagues') }}">Leagues</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('league.dashboard', league_id=league.id) }}">{{ league.name }}</a>
+  <span class="sep"></span>
+  <span>Week {{ week_number }} Players</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>Add Players - Week {{ week_number }}</h1>
+    <div class="card-meta mt-1">Select from roster or add new players</div>
+  </div>
+</div>
+
+<div class="card form-card">
+  <form method="POST" action="{{ url_for('league.add_players', league_id=league.id, week_number=week_number) }}">
+
+    {% if roster %}
+    <div class="form-group">
+      <label class="form-label">League Roster</label>
+      <div class="checkbox-grid">
+        {% for lp in roster %}
+        <label class="checkbox-item {% if lp.id in linked_lp_ids %}checked-item{% endif %}">
+          <input type="checkbox" name="league_player_ids" value="{{ lp.id }}"
+                 {% if lp.id in linked_lp_ids %}checked disabled{% endif %}>
+          <span>{{ lp.name }}</span>
+          {% if lp.id in linked_lp_ids %}<span class="badge badge-green text-xs">Added</span>{% endif %}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="form-group">
+      <label class="form-label" for="new_player_name">Add New Player</label>
+      <input type="text" id="new_player_name" name="new_player_name" class="form-control" placeholder="New player name (also adds to league roster)">
+    </div>
+
+    <div class="btn-group mt-2">
+      <button type="submit" class="btn btn-primary">Add Selected Players</button>
+      <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}" class="btn btn-outline">Go to Tournament</a>
+      <a href="{{ url_for('league.dashboard', league_id=league.id) }}" class="btn btn-outline">Back to League</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

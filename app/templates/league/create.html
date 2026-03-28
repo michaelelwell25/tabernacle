@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Create League - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('league.list_leagues') }}">Leagues</a>
+  <span class="sep"></span>
+  <span>Create</span>
+</div>
+
+<div class="page-header">
+  <h1>Create League</h1>
+</div>
+
+<div class="card form-card">
+  <form method="POST" action="{{ url_for('league.create') }}">
+    <div class="form-group">
+      <label class="form-label" for="name">League Name</label>
+      <input type="text" id="name" name="name" class="form-control" placeholder="e.g. Friday Night cEDH League" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="num_weeks">Number of Weeks</label>
+      <input type="number" id="num_weeks" name="num_weeks" class="form-control" value="8" min="1" max="52" required>
+      <div class="form-hint">How many weeks will this league run?</div>
+    </div>
+
+    <div class="btn-group mt-2">
+      <button type="submit" class="btn btn-primary btn-lg">Create League</button>
+      <a href="{{ url_for('league.list_leagues') }}" class="btn btn-outline">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

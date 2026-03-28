@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}{{ league.name }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('league.list_leagues') }}">Leagues</a>
+  <span class="sep"></span>
+  <span>{{ league.name }}</span>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1>{{ league.name }}</h1>
+    <div class="card-meta mt-1">
+      <span>{{ league.num_weeks }} weeks</span>
+      <span>&middot;</span>
+      {% if league.status == 'active' %}
+      <span class="badge badge-green">Active</span>
+      {% else %}
+      <span class="badge badge-gray">Completed</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-value">{{ roster_count }}</div>
+    <div class="stat-label">Players</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ weeks|selectattr('status', 'ne', 'not_created')|list|length }} / {{ league.num_weeks }}</div>
+    <div class="stat-label">Weeks Created</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ weeks|selectattr('status', 'eq', 'completed')|list|length }}</div>
+    <div class="stat-label">Weeks Completed</div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="section">
+  <div class="btn-group">
+    <a href="{{ url_for('league.standings', league_id=league.id) }}" class="btn btn-primary">Full Standings</a>
+    <a href="{{ url_for('league.roster', league_id=league.id) }}" class="btn btn-secondary">Roster ({{ roster_count }})</a>
+    {% if league.status == 'active' %}
+    <form method="POST" action="{{ url_for('league.complete_league', league_id=league.id) }}" class="inline-form">
+      <button type="submit" class="btn btn-outline">Complete League</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Top Standings -->
+{% if standings %}
+<div class="section">
+  <div class="section-title">Standings{% if standings|length > 10 %} (Top 10){% endif %}</div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Player</th>
+          <th>Points</th>
+          <th>Record</th>
+          <th>Win%</th>
+          <th>OW%</th>
+          <th>Weeks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in standings %}
+        <tr>
+          <td>{{ s.rank }}</td>
+          <td><a href="{{ url_for('league.player_detail', league_id=league.id, lp_id=s.league_player.id) }}">{{ s.league_player.name }}</a></td>
+          <td><strong>{{ s.league_points }}</strong>{% if s.late_join_pts > 0 %} <span class="text-secondary text-xs">(+{{ s.late_join_pts }} late)</span>{% endif %}</td>
+          <td>{{ s.wins }}-{{ s.losses }}</td>
+          <td>{{ "%.1f"|format(s.win_pct * 100) }}%</td>
+          <td>{{ "%.1f"|format(s.opp_win_pct * 100) }}%</td>
+          <td>{{ s.weeks_played }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Weeks -->
+<div class="section">
+  <div class="section-title">Weeks</div>
+  {% for w in weeks %}
+  <div class="round-item">
+    <div class="round-info">
+      <span class="round-number">Week {{ w.number }}</span>
+      {% if w.status == 'not_created' %}
+      <span class="badge badge-gray">Not Created</span>
+      {% elif w.status == 'registration' %}
+      <span class="badge badge-blue">Registration</span>
+      {% elif w.status == 'active' %}
+      <span class="badge badge-green">Active</span>
+      {% elif w.status == 'completed' %}
+      <span class="badge badge-green">Completed</span>
+      {% endif %}
+    </div>
+    <div class="btn-group">
+      {% if w.status == 'not_created' and league.status == 'active' %}
+      <form method="POST" action="{{ url_for('league.create_week', league_id=league.id, week_number=w.number) }}" class="inline-form">
+        <button type="submit" class="btn btn-primary btn-sm">Create</button>
+      </form>
+      {% elif w.tournament %}
+      <a href="{{ url_for('league.view_week', league_id=league.id, week_number=w.number) }}" class="btn btn-outline btn-sm">Dashboard</a>
+      {% if w.status == 'completed' %}
+      <a href="{{ url_for('league.week_recap', league_id=league.id, week_number=w.number) }}" class="btn btn-outline btn-sm">Recap</a>
+      {% endif %}
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Danger Zone -->
+<div class="section mt-3">
+  <div class="section-title text-danger">Danger Zone</div>
+  <button class="btn btn-danger btn-sm" onclick="document.getElementById('deleteConfirm').classList.add('open')">Delete League</button>
+</div>
+
+<div class="confirm-overlay" id="deleteConfirm">
+  <div class="confirm-dialog">
+    <h3>Delete League?</h3>
+    <p>This will permanently delete <strong>{{ league.name }}</strong> and all league data (roster, standings). Weekly tournaments will remain but be unlinked. This cannot be undone.</p>
+    <div class="confirm-actions">
+      <form method="POST" action="{{ url_for('league.delete_league', league_id=league.id) }}">
+        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+      </form>
+      <button class="btn btn-secondary" onclick="document.getElementById('deleteConfirm').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

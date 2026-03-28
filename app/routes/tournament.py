@@ -9,7 +9,7 @@ bp = Blueprint('tournament', __name__, url_prefix='/tournaments')
 @bp.route('/')
 def list_tournaments():
     """List all tournaments"""
-    tournaments = Tournament.query.order_by(Tournament.date.desc()).all()
+    tournaments = Tournament.query.filter_by(league_id=None).order_by(Tournament.date.desc()).all()
     return render_template('tournament/list.html', tournaments=tournaments)
 
 

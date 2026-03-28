@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Week {{ week_number }} Recap - {{ league.name }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('league.list_leagues') }}">Leagues</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('league.dashboard', league_id=league.id) }}">{{ league.name }}</a>
+  <span class="sep"></span>
+  <span>Week {{ week_number }} Recap</span>
+</div>
+
+<div class="page-header">
+  <h1>Week {{ week_number }} Recap</h1>
+</div>
+
+<!-- Week Results -->
+{% if recap.results %}
+<div class="section">
+  <div class="section-title">This Week's Results</div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Commander</th>
+          <th>W</th>
+          <th>L</th>
+          <th>Week Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in recap.results %}
+        <tr>
+          <td>{{ r.name }}</td>
+          <td>{{ r.commander or '&mdash;' }}</td>
+          <td>{{ r.week_wins }}</td>
+          <td>{{ r.week_losses }}</td>
+          <td><strong>{{ r.week_pts }}</strong></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- League Standings After This Week -->
+{% if recap.standings %}
+<div class="section">
+  <div class="section-title">League Standings (After Week {{ week_number }})</div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Player</th>
+          <th>Points</th>
+          <th>Record</th>
+          <th>Win%</th>
+          <th>OW%</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in recap.standings %}
+        <tr>
+          <td>{{ s.rank }}</td>
+          <td>{{ s.league_player.name }}</td>
+          <td><strong>{{ s.league_points }}</strong></td>
+          <td>{{ s.wins }}-{{ s.losses }}</td>
+          <td>{{ "%.1f"|format(s.win_pct * 100) }}%</td>
+          <td>{{ "%.1f"|format(s.opp_win_pct * 100) }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="btn-group mt-2">
+  <a href="{{ url_for('league.view_week', league_id=league.id, week_number=week_number) }}" class="btn btn-outline">Tournament Details</a>
+  <a href="{{ url_for('league.dashboard', league_id=league.id) }}" class="btn btn-outline">Back to League</a>
+</div>
+{% endblock %}

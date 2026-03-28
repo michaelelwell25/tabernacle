@@ -3,9 +3,17 @@
 
 {% block content %}
 <div class="breadcrumb">
+  {% if tournament.league %}
+  <a href="{{ url_for('league.list_leagues') }}">Leagues</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('league.dashboard', league_id=tournament.league.id) }}">{{ tournament.league.name }}</a>
+  <span class="sep"></span>
+  <span>Week {{ tournament.week_number }}</span>
+  {% else %}
   <a href="{{ url_for('tournament.list_tournaments') }}">Tournaments</a>
   <span class="sep"></span>
   <span>{{ tournament.name }}</span>
+  {% endif %}
 </div>
 
 <div class="page-header">

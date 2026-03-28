@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}{{ detail.league_player.name }} - {{ league.name }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('league.list_leagues') }}">Leagues</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('league.dashboard', league_id=league.id) }}">{{ league.name }}</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('league.roster', league_id=league.id) }}">Roster</a>
+  <span class="sep"></span>
+  <span>{{ detail.league_player.name }}</span>
+</div>
+
+<div class="page-header">
+  <h1>{{ detail.league_player.name }}</h1>
+</div>
+
+{% if detail.standing %}
+{% set s = detail.standing %}
+<!-- Summary Stats -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-value">{{ s.league_points }}</div>
+    <div class="stat-label">League Points</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">#{{ s.rank }}</div>
+    <div class="stat-label">Rank</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ s.wins }}-{{ s.losses }}</div>
+    <div class="stat-label">Record</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ "%.1f"|format(s.win_pct * 100) }}%</div>
+    <div class="stat-label">Win%</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ "%.1f"|format(s.opp_win_pct * 100) }}%</div>
+    <div class="stat-label">Opp Win%</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">{{ s.weeks_played }}</div>
+    <div class="stat-label">Weeks Played</div>
+  </div>
+</div>
+
+{% if s.late_join_pts > 0 %}
+<div class="flash flash-info mb-2">
+  Joined Week {{ s.joined_week }} &mdash; received {{ s.late_join_pts }} late-join bonus point{{ 's' if s.late_join_pts != 1 }}
+</div>
+{% endif %}
+
+<!-- Week-by-Week -->
+<div class="section">
+  <div class="section-title">Week-by-Week</div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Week</th>
+          <th>Commander</th>
+          <th>W</th>
+          <th>L</th>
+          <th>Pts Earned</th>
+          <th>Running Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set ns = namespace(running=s.late_join_pts) %}
+        {% for wk in range(1, league.num_weeks + 1) %}
+        {% if wk in s.weekly %}
+        {% set wk_pts = s.weekly[wk].wins * 2 + s.weekly[wk].losses %}
+        {% set ns.running = ns.running + wk_pts %}
+        <tr>
+          <td>Week {{ wk }}</td>
+          <td>{{ s.weekly[wk].commander or '&mdash;' }}</td>
+          <td>{{ s.weekly[wk].wins }}</td>
+          <td>{{ s.weekly[wk].losses }}</td>
+          <td>{{ wk_pts }}</td>
+          <td><strong>{{ ns.running }}</strong></td>
+        </tr>
+        {% elif wk >= s.joined_week %}
+        <tr class="text-secondary">
+          <td>Week {{ wk }}</td>
+          <td colspan="5">Did not play</td>
+        </tr>
+        {% else %}
+        <tr class="text-secondary">
+          <td>Week {{ wk }}</td>
+          <td colspan="5">Not yet joined</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="empty-state">
+  <h3>No data yet</h3>
+  <p>This player hasn't completed any weeks.</p>
+</div>
+{% endif %}
+
+<div class="btn-group mt-2">
+  <a href="{{ url_for('league.standings', league_id=league.id) }}" class="btn btn-outline">Full Standings</a>
+  <a href="{{ url_for('league.dashboard', league_id=league.id) }}" class="btn btn-outline">Back to League</a>
+</div>
+{% endblock %}

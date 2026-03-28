@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Roster - {{ league.name }} - Tabernacle{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{{ url_for('league.list_leagues') }}">Leagues</a>
+  <span class="sep"></span>
+  <a href="{{ url_for('league.dashboard', league_id=league.id) }}">{{ league.name }}</a>
+  <span class="sep"></span>
+  <span>Roster</span>
+</div>
+
+<div class="page-header">
+  <h1>League Roster</h1>
+</div>
+
+<!-- Add player form -->
+<div class="card form-card mb-2">
+  <form method="POST" action="{{ url_for('league.add_roster_player', league_id=league.id) }}" class="form-row">
+    <input type="text" name="name" class="form-control" placeholder="Player name" required>
+    <button type="submit" class="btn btn-primary">Add to Roster</button>
+  </form>
+</div>
+
+{% if players %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Joined Week</th>
+        <th>Weeks Played</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in players %}
+      <tr>
+        <td><a href="{{ url_for('league.player_detail', league_id=league.id, lp_id=p.id) }}">{{ p.name }}</a></td>
+        <td>Week {{ p.joined_week }}</td>
+        <td>{{ p.player_links.count() }}</td>
+        <td><a href="{{ url_for('league.player_detail', league_id=league.id, lp_id=p.id) }}" class="btn btn-outline btn-sm">View</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <h3>No players yet</h3>
+  <p>Add players to the roster above, or they'll be added automatically when you create weekly tournaments.</p>
+</div>
+{% endif %}
+{% endblock %}

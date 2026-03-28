@@ -19,6 +19,8 @@ class Tournament(db.Model):
     seat_scoring = db.Column(db.Boolean, default=False)
     seat_win_points = db.Column(db.String(50), default='5.2-5.4-5.6-5.8')  # seat 1-2-3-4 win
     seat_draw_points = db.Column(db.String(50), default='0.2-0.4-0.6-0.8')  # seat 1-2-3-4 draw
+    league_id = db.Column(db.Integer, db.ForeignKey('leagues.id'), nullable=True)
+    week_number = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

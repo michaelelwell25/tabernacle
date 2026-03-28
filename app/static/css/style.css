@@ -1627,3 +1627,75 @@ select.form-control {
   .card-centered, .card-centered-lg { margin-left: 0; margin-right: 0; }
   .card-centered .card, .card-centered-lg .card { padding: 1rem; }
 }
+
+/* ============================================
+   League Feature
+   ============================================ */
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.checkbox-item:hover { background: var(--bg-hover); }
+.checkbox-item.checked-item { opacity: 0.6; }
+.checkbox-item input[type="checkbox"] { accent-color: var(--accent); }
+
+.detail-row td {
+  padding: 0 !important;
+  background: var(--bg-secondary);
+}
+
+.detail-content {
+  padding: 0.75rem 1rem;
+}
+
+.data-table-nested {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.data-table-nested th {
+  background: var(--bg-primary);
+}
+
+.badge-gold {
+  background: var(--accent-glow);
+  color: var(--accent);
+  border: 1px solid rgba(229, 184, 58, 0.3);
+}
+
+.nav-sep {
+  border-left: 1px solid var(--border-light);
+  height: 1.2rem;
+  margin: 0 0.25rem;
+  align-self: center;
+  list-style: none;
+}
+
+.flash-info {
+  background: var(--info-bg);
+  color: var(--info);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+}
