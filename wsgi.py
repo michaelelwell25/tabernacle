@@ -13,6 +13,10 @@ with app.app_context():
         "ALTER TABLE tournaments ADD COLUMN owner_id INTEGER REFERENCES users(id)",
         "ALTER TABLE leagues ADD COLUMN owner_id INTEGER REFERENCES users(id)",
         "ALTER TABLE players ADD COLUMN user_id INTEGER REFERENCES users(id)",
+        "ALTER TABLE tournaments ADD COLUMN format VARCHAR(20) DEFAULT 'commander'",
+        "ALTER TABLE pod_assignments ADD COLUMN game_wins INTEGER",
+        "ALTER TABLE pod_assignments ADD COLUMN game_losses INTEGER",
+        "ALTER TABLE pod_assignments ADD COLUMN game_draws INTEGER",
     ]
     # Ensure first user is always admin (handles role default changes)
     try:

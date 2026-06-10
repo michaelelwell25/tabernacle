@@ -39,6 +39,16 @@ def _get_playoff_placement(tournament):
                 if a.player_id not in placements:
                     placements[a.player_id] = 2  # semi loser
 
+    # Quarterfinal losers (constructed single-elim only)
+    quarter_round = Round.query.filter_by(
+        tournament_id=tournament.id, is_playoff=True, playoff_stage='quarter'
+    ).first()
+    if quarter_round:
+        for pod in quarter_round.pods:
+            for a in pod.assignments:
+                if a.player_id not in placements:
+                    placements[a.player_id] = 3  # quarter loser
+
     return placements
 
 

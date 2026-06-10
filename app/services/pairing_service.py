@@ -93,6 +93,9 @@ def generate_swiss_pairings(tournament_id, round_number):
     if not tournament:
         raise ValueError(f"Tournament {tournament_id} not found")
 
+    if tournament.is_constructed():
+        return generate_1v1_pairings(tournament, round_number)
+
     players = tournament.get_active_players()
     if len(players) < 3:
         raise ValueError("Need at least 3 players to generate pairings")
@@ -152,6 +155,101 @@ def generate_swiss_pairings(tournament_id, round_number):
     return create_round_and_pods(
         tournament, round_number, pod_assignments, bye_players, points_map, rank_map, history
     )
+
+
+def generate_1v1_pairings(tournament, round_number):
+    """Swiss pairings for constructed (1v1) tournaments."""
+    players = tournament.get_active_players()
+    if len(players) < 2:
+        raise ValueError("Need at least 2 players to generate pairings")
+
+    standings = calculate_standings(tournament)
+    active_standings = [s for s in standings if not s['player'].dropped]
+    sorted_players = [s['player'] for s in active_standings]
+    rank_map = {s['player'].id: s['rank'] for s in active_standings}
+    points_map = {s['player'].id: s['points'] for s in active_standings}
+
+    # One bye if odd count: fewest byes first, then lowest points
+    bye_players = []
+    pool = list(sorted_players)
+    if len(pool) % 2 == 1:
+        candidates = sorted(
+            pool,
+            key=lambda p: (ByeHistory.get_bye_count(p.id, tournament.id), points_map[p.id])
+        )
+        bye_players = [candidates[0]]
+        pool = [p for p in pool if p.id != bye_players[0].id]
+        ByeHistory.record_bye(bye_players[0].id, tournament.id, round_number)
+
+    history = build_pairing_history_map(tournament.id)
+    _log(f"Round {round_number} (1v1): {len(pool)} players in pool, {len(history)} pair-history entries")
+
+    pair_assignments = []
+    method = 'none'
+    if len(pool) >= 2:
+        if HAS_PULP and (len(pool) * (len(pool) - 1)) // 2 <= CANDIDATE_CAP:
+            pair_assignments = _solve_1v1_ilp(pool, points_map, rank_map, history)
+            method = 'ILP'
+        if not pair_assignments:
+            pair_assignments = _greedy_1v1(pool, points_map, rank_map, history)
+            method = 'greedy' if method == 'none' else 'greedy (ILP failed)'
+
+    repeats = _count_repeats(pair_assignments, history)
+    _log(f"  Method: {method}, matches: {len(pair_assignments)}, repeat pairings: {repeats}")
+
+    return create_round_and_pods(
+        tournament, round_number, pair_assignments, bye_players, points_map, rank_map, history
+    )
+
+
+def _score_1v1_pair(id1, id2, points_map, rank_map, history):
+    key = (min(id1, id2), max(id1, id2))
+    cost = 10000 * history.get(key, 0)
+    cost += 10 * abs(points_map[id1] - points_map[id2])
+    cost += 0.1 * abs(rank_map[id1] - rank_map[id2])
+    return cost
+
+
+def _solve_1v1_ilp(pool, points_map, rank_map, history):
+    """Exact minimum-cost perfect matching over all pairs."""
+    scored = []
+    for i in range(len(pool)):
+        for j in range(i + 1, len(pool)):
+            p1, p2 = pool[i], pool[j]
+            cost = _score_1v1_pair(p1.id, p2.id, points_map, rank_map, history)
+            scored.append(((p1, p2), cost))
+
+    prob = pulp.LpProblem("SwissPairing1v1", pulp.LpMinimize)
+    x = {idx: pulp.LpVariable(f"x_{idx}", cat='Binary') for idx in range(len(scored))}
+    prob += pulp.lpSum(scored[idx][1] * x[idx] for idx in x)
+
+    for player in pool:
+        prob += pulp.lpSum(
+            x[idx] for idx in x
+            if player in scored[idx][0]
+        ) == 1
+
+    solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=10)
+    status = prob.solve(solver)
+    if pulp.LpStatus[status] != 'Optimal':
+        return None
+
+    return [list(scored[idx][0]) for idx in x if pulp.value(x[idx]) > 0.5]
+
+
+def _greedy_1v1(pool, points_map, rank_map, history):
+    """Pair down the standings, preferring opponents not yet played."""
+    remaining = sorted(pool, key=lambda p: rank_map[p.id])
+    pairs = []
+    while len(remaining) >= 2:
+        anchor = remaining.pop(0)
+        best_idx, best_cost = 0, float('inf')
+        for idx, opp in enumerate(remaining):
+            cost = _score_1v1_pair(anchor.id, opp.id, points_map, rank_map, history)
+            if cost < best_cost:
+                best_cost, best_idx = cost, idx
+        pairs.append([anchor, remaining.pop(best_idx)])
+    return pairs
 
 
 def _get_short_pod_players(tournament_id):
@@ -576,10 +674,12 @@ def create_round_and_pods(tournament, round_number, pod_assignments, bye_players
     db.session.flush()
 
     pod_number = 1
+    constructed = tournament.is_constructed()
 
-    # Build seat history for all players in one query
-    all_player_ids = [p.id for pods in pod_assignments for p in pods]
-    seat_hist = SeatHistory.bulk_seat_history(tournament.id, all_player_ids)
+    # Build seat history for all players in one query (seat cycling is a pod concept)
+    if not constructed:
+        all_player_ids = [p.id for pods in pod_assignments for p in pods]
+        seat_hist = SeatHistory.bulk_seat_history(tournament.id, all_player_ids)
 
     # Create regular pods
     for pod_players in pod_assignments:
@@ -593,7 +693,10 @@ def create_round_and_pods(tournament, round_number, pod_assignments, bye_players
         db.session.add(pod)
         db.session.flush()
 
-        seated = _assign_seats(pod_players, seat_hist)
+        if constructed:
+            seated = list(enumerate(pod_players, 1))
+        else:
+            seated = _assign_seats(pod_players, seat_hist)
         for seat, player in seated:
             assignment = PodAssignment(
                 pod_id=pod.id,
@@ -601,8 +704,9 @@ def create_round_and_pods(tournament, round_number, pod_assignments, bye_players
                 seat_position=seat
             )
             db.session.add(assignment)
-            SeatHistory.record_seat(player.id, tournament.id, round_number, seat)
-            seat_hist.setdefault(player.id, []).append(seat)
+            if not constructed:
+                SeatHistory.record_seat(player.id, tournament.id, round_number, seat)
+                seat_hist.setdefault(player.id, []).append(seat)
 
         PairingHistory.record_pod_pairings(pod_players, tournament.id, round_number)
         pod_number += 1
@@ -624,7 +728,11 @@ def create_round_and_pods(tournament, round_number, pod_assignments, bye_players
             player_id=player.id,
             seat_position=1,
             placement=1,
-            points_earned=tournament.bye_points
+            points_earned=tournament.bye_points,
+            # MTR: a bye counts as a 2-0 match win
+            game_wins=2 if constructed else None,
+            game_losses=0 if constructed else None,
+            game_draws=0 if constructed else None,
         )
         db.session.add(assignment)
         pod_number += 1

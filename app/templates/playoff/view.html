@@ -36,7 +36,7 @@
         <tr>
           <td><strong>{{ loop.index }}</strong></td>
           <td>{{ s['player'].name }}</td>
-          <td>{{ s['total_points'] }}</td>
+          <td>{{ s['points'] }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -48,7 +48,7 @@
 {% for pr in playoff_rounds %}
 <div class="section">
   <div class="section-title">
-    {% if pr.playoff_stage == 'semi' %}Semifinals{% else %}Finals{% endif %}
+    {% if pr.playoff_stage == 'quarter' %}Quarterfinals{% elif pr.playoff_stage == 'semi' %}Semifinals{% else %}Finals{% endif %}
     &mdash; Round {{ pr.round_number }}
     {% if pr.status == 'completed' or pr.is_complete() %}
     <span class="badge badge-green ml-1">Complete</span>
@@ -77,7 +77,7 @@
         {% if pod.is_bye %}
         <span class="badge badge-gold">Advances</span>
         {% elif a.placement == 1 %}
-        <span class="badge badge-green">WINNER</span>
+        <span class="badge badge-green">WINNER{% if tournament.is_constructed() and a.game_wins is not none %} {{ a.game_wins }}-{{ a.game_losses }}{% endif %}</span>
         {% elif pod.is_complete() %}
         <span class="text-secondary text-xs">Eliminated</span>
         {% endif %}
@@ -96,27 +96,22 @@
 <!-- Advance / Complete Buttons -->
 <div class="section">
   <div class="btn-group">
-    {% set has_semi = playoff_rounds|selectattr('playoff_stage', 'equalto', 'semi')|list %}
-    {% set has_final = playoff_rounds|selectattr('playoff_stage', 'equalto', 'final')|list %}
+    {% set latest = playoff_rounds|last %}
 
-    {% if has_semi and not has_final %}
-      {% set semi = has_semi[0] %}
-      {% if semi.is_complete() %}
+    {% if latest and latest.playoff_stage != 'final' %}
+      {% if latest.is_complete() %}
       <form method="POST" action="{{ url_for('playoff.advance', tournament_id=tournament.id) }}" class="inline-form">
-        <button type="submit" class="btn btn-primary">Advance to Finals</button>
+        <button type="submit" class="btn btn-primary">Advance to {{ 'Finals' if latest.playoff_stage == 'semi' else 'Semifinals' }}</button>
       </form>
       {% else %}
-      <span class="text-secondary">Complete all semifinal pods to advance.</span>
+      <span class="text-secondary">Complete all matches in the current stage to advance.</span>
       {% endif %}
     {% endif %}
 
-    {% if has_final %}
-      {% set final = has_final[0] %}
-      {% if final.is_complete() and tournament.status == 'playoffs' %}
+    {% if latest and latest.playoff_stage == 'final' and latest.is_complete() and tournament.status == 'playoffs' %}
       <form method="POST" action="{{ url_for('playoff.complete_playoff', tournament_id=tournament.id) }}" class="inline-form">
         <button type="submit" class="btn btn-primary btn-lg">Complete Tournament</button>
       </form>
-      {% endif %}
     {% endif %}
   </div>
 </div>

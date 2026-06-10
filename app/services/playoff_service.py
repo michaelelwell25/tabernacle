@@ -13,11 +13,21 @@ BRACKET_STRUCTURE = {
     16: (4, 0),   # 4 semi pods (seeds 1-16), no byes
 }
 
+# Constructed (1v1) single elimination: cut_size -> (first stage, seed pairing order)
+CONSTRUCTED_BRACKETS = {
+    8: ('quarter', [(1, 8), (4, 5), (2, 7), (3, 6)]),
+    4: ('semi', [(1, 4), (2, 3)]),
+    2: ('final', [(1, 2)]),
+}
+NEXT_STAGE = {'quarter': 'semi', 'semi': 'final'}
+
 
 def start_playoffs(tournament_id, cut_size):
     tournament = Tournament.query.get(tournament_id)
     if not tournament:
         raise ValueError("Tournament not found")
+    if tournament.is_constructed():
+        return start_constructed_playoffs(tournament, cut_size)
     if cut_size not in BRACKET_STRUCTURE:
         raise ValueError(f"Invalid cut size: {cut_size}. Must be 4, 10, 13, or 16")
 
@@ -42,6 +52,89 @@ def start_playoffs(tournament_id, cut_size):
         round_obj = _create_playoff_round(tournament, 'semi', semi_players, bye_players)
 
     db.session.commit()
+    return round_obj
+
+
+def start_constructed_playoffs(tournament, cut_size):
+    if cut_size not in CONSTRUCTED_BRACKETS:
+        raise ValueError(f"Invalid cut size: {cut_size}. Must be 2, 4, or 8")
+
+    standings = calculate_standings(tournament)
+    active_standings = [s for s in standings if not s['player'].dropped]
+
+    if len(active_standings) < cut_size:
+        raise ValueError(f"Only {len(active_standings)} active players, need {cut_size} for top {cut_size} cut")
+
+    seeds = {i + 1: s['player'] for i, s in enumerate(active_standings[:cut_size])}
+    stage, pairing_order = CONSTRUCTED_BRACKETS[cut_size]
+
+    tournament.status = 'playoffs'
+    tournament.playoff_cut = cut_size
+
+    matches = [[seeds[a], seeds[b]] for a, b in pairing_order]
+    round_obj = _create_elimination_round(tournament, stage, matches)
+    db.session.commit()
+    return round_obj
+
+
+def advance_constructed_playoffs(tournament_id):
+    """Advance winners of the latest 1v1 elimination round to the next stage."""
+    tournament = Tournament.query.get(tournament_id)
+    if not tournament or tournament.status != 'playoffs':
+        raise ValueError("Tournament not in playoffs")
+
+    latest = Round.query.filter_by(tournament_id=tournament_id, is_playoff=True)\
+        .order_by(Round.round_number.desc()).first()
+    if not latest:
+        raise ValueError("No playoff round found")
+    if latest.playoff_stage == 'final':
+        raise ValueError("Finals already generated")
+    if not latest.is_complete():
+        raise ValueError("Current playoff round is not complete")
+
+    winners = []
+    for pod in latest.pods.order_by('pod_number'):
+        winner_assignment = pod.assignments.filter_by(placement=1).first()
+        if not winner_assignment:
+            raise ValueError(f"No winner found for match {pod.pod_number}")
+        winners.append(winner_assignment.player)
+
+    # Bracket order: winner of match 1 plays winner of match 2, etc.
+    matches = [[winners[i], winners[i + 1]] for i in range(0, len(winners), 2)]
+    round_obj = _create_elimination_round(tournament, NEXT_STAGE[latest.playoff_stage], matches)
+    db.session.commit()
+    return round_obj
+
+
+def _create_elimination_round(tournament, stage, matches):
+    round_number = tournament.current_round + 1
+    tournament.current_round = round_number
+
+    round_obj = Round(
+        tournament_id=tournament.id,
+        round_number=round_number,
+        status='pending',
+        is_playoff=True,
+        playoff_stage=stage
+    )
+    db.session.add(round_obj)
+    db.session.flush()
+
+    for pod_number, pair in enumerate(matches, 1):
+        pod = Pod(
+            round_id=round_obj.id,
+            pod_number=pod_number,
+            table_number=pod_number,
+            status='pending',
+            is_bye=False
+        )
+        db.session.add(pod)
+        db.session.flush()
+        for seat, player in enumerate(pair, 1):
+            db.session.add(PodAssignment(
+                pod_id=pod.id, player_id=player.id, seat_position=seat
+            ))
+
     return round_obj
 
 

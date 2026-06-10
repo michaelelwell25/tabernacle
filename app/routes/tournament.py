@@ -25,6 +25,7 @@ def create_tournament():
     if request.method == 'POST':
         name = request.form.get('name')
         date_str = request.form.get('date')
+        tournament_format = request.form.get('format', 'commander')
         scoring_system = request.form.get('scoring_system', '3-1-0-0')
 
         if not name or not date_str:
@@ -45,9 +46,18 @@ def create_tournament():
         seat_win_points = request.form.get('seat_win_points', '5.2-5.4-5.6-5.8').strip()
         seat_draw_points = request.form.get('seat_draw_points', '0.2-0.4-0.6-0.8').strip()
 
+        if tournament_format == 'constructed':
+            # MTR defaults: win 3 / draw 1 / loss 0, bye = match win
+            scoring_system = '3-1-0'
+            bye_points = 3
+            draw_points = 1
+            allow_byes = True
+            seat_scoring = False
+
         tournament = Tournament(
             name=name,
             date=date,
+            format=tournament_format,
             scoring_system=scoring_system,
             bye_points=bye_points,
             draw_points=draw_points,
@@ -95,9 +105,10 @@ def start_tournament(tournament_id):
         flash('Tournament has already started', 'error')
         return redirect(url_for('tournament.view_tournament', tournament_id=tournament.id))
 
+    min_players = 2 if tournament.is_constructed() else 3
     player_count = tournament.players.filter_by(dropped=False).count()
-    if player_count < 3:
-        flash('Need at least 3 players to start tournament', 'error')
+    if player_count < min_players:
+        flash(f'Need at least {min_players} players to start tournament', 'error')
         return redirect(url_for('tournament.view_tournament', tournament_id=tournament.id))
 
     tournament.status = 'active'

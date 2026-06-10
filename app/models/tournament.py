@@ -9,6 +9,7 @@ class Tournament(db.Model):
     name = db.Column(db.String(200), nullable=False)
     date = db.Column(db.Date, nullable=False)
     status = db.Column(db.String(20), default='registration')  # registration, active, playoffs, completed
+    format = db.Column(db.String(20), default='commander')  # commander (4-player pods), constructed (1v1)
     playoff_cut = db.Column(db.Integer)  # None, 4, 10, 13, 16
     current_round = db.Column(db.Integer, default=0)
     scoring_system = db.Column(db.String(50), default='3-1-0-0')  # 1st-2nd-3rd-4th points
@@ -32,6 +33,12 @@ class Tournament(db.Model):
 
     def __repr__(self):
         return f'<Tournament {self.name}>'
+
+    def is_constructed(self):
+        return self.format == 'constructed'
+
+    def pod_size(self):
+        return 2 if self.is_constructed() else 4
 
     def get_scoring_points(self):
         """Parse scoring system string and return points for each placement"""

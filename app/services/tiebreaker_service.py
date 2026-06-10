@@ -1,29 +1,38 @@
 from app.models.player import Player
 from app.models.bye_history import ByeHistory
-from app.services.scoring_service import calculate_player_match_win_percentage
+from app.services.scoring_service import (
+    calculate_player_match_win_percentage,
+    calculate_constructed_mwp,
+    calculate_constructed_gwp,
+)
 
 BYE_PHANTOM_MWP = 0.2
 OPPONENT_MWP_FLOOR = 0.2
+CONSTRUCTED_FLOOR = 0.33  # MTR Appendix C minimum for opponents' percentages
 
 
 def calculate_opponent_match_win_percentage(player):
     """
     OMW% = Average match win percentage of all opponents faced.
-    Each opponent's MWP has a floor of 0.2.
-    Bye rounds add 3 phantom opponents at 0.2 MWP each.
+    Commander: opponent MWP floor 0.2, byes add 3 phantom opponents at 0.2.
+    Constructed (MTR): opponent MWP floor 0.33, byes ignored (not opponents).
     """
+    constructed = player.tournament.is_constructed()
     opponents = player.get_opponents()
 
     omw_values = []
     for opponent in opponents:
-        opponent_mw = calculate_player_match_win_percentage(opponent)
-        opponent_mw = max(opponent_mw, OPPONENT_MWP_FLOOR)
-        omw_values.append(opponent_mw)
+        if constructed:
+            omw_values.append(max(calculate_constructed_mwp(opponent), CONSTRUCTED_FLOOR))
+        else:
+            opponent_mw = calculate_player_match_win_percentage(opponent)
+            omw_values.append(max(opponent_mw, OPPONENT_MWP_FLOOR))
 
-    # Add phantom opponents for each bye received
-    bye_count = ByeHistory.get_bye_count(player.id, player.tournament_id)
-    for _ in range(bye_count * 3):
-        omw_values.append(BYE_PHANTOM_MWP)
+    # Add phantom opponents for each bye received (commander only)
+    if not constructed:
+        bye_count = ByeHistory.get_bye_count(player.id, player.tournament_id)
+        for _ in range(bye_count * 3):
+            omw_values.append(BYE_PHANTOM_MWP)
 
     if not omw_values:
         return 0.0
@@ -32,25 +41,32 @@ def calculate_opponent_match_win_percentage(player):
 
 
 def calculate_game_win_percentage(player):
-    """GW% — same as MWP in EDH (one game per match)."""
+    """GW% — real game stats for constructed; same as MWP in EDH (one game per match)."""
+    if player.tournament.is_constructed():
+        return calculate_constructed_gwp(player)
     return calculate_player_match_win_percentage(player)
 
 
 def calculate_opponent_game_win_percentage(player):
     """
     OGW% = Average GW% of all opponents faced.
-    Bye rounds add 3 phantom opponents at 0.2 each.
+    Commander: byes add 3 phantom opponents at 0.2.
+    Constructed (MTR): opponent GWP floor 0.33, byes ignored.
     """
+    constructed = player.tournament.is_constructed()
     opponents = player.get_opponents()
 
     ogw_values = []
     for opponent in opponents:
-        opponent_gw = calculate_game_win_percentage(opponent)
-        ogw_values.append(opponent_gw)
+        if constructed:
+            ogw_values.append(max(calculate_constructed_gwp(opponent), CONSTRUCTED_FLOOR))
+        else:
+            ogw_values.append(calculate_game_win_percentage(opponent))
 
-    bye_count = ByeHistory.get_bye_count(player.id, player.tournament_id)
-    for _ in range(bye_count * 3):
-        ogw_values.append(BYE_PHANTOM_MWP)
+    if not constructed:
+        bye_count = ByeHistory.get_bye_count(player.id, player.tournament_id)
+        for _ in range(bye_count * 3):
+            ogw_values.append(BYE_PHANTOM_MWP)
 
     if not ogw_values:
         return 0.0

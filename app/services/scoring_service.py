@@ -12,6 +12,37 @@ def calculate_player_total_points(player):
     return player.get_total_points()
 
 
+def calculate_constructed_mwp(player):
+    """MTR Appendix C: match points / (3 x rounds played). Byes count as wins."""
+    points = 0.0
+    rounds = 0
+    for assignment in player.pod_assignments:
+        if assignment.points_earned is None:
+            continue
+        points += assignment.points_earned
+        rounds += 1
+    if rounds == 0:
+        return 0.0
+    return min(points / (3 * rounds), 1.0)
+
+
+def calculate_constructed_gwp(player):
+    """MTR Appendix C: game points / (3 x games played). Bye = 2-0."""
+    game_points = 0
+    games = 0
+    for assignment in player.pod_assignments:
+        if assignment.points_earned is None:
+            continue
+        gw = assignment.game_wins or 0
+        gl = assignment.game_losses or 0
+        gd = assignment.game_draws or 0
+        game_points += 3 * gw + gd
+        games += gw + gl + gd
+    if games == 0:
+        return 0.0
+    return min(game_points / (3 * games), 1.0)
+
+
 def calculate_player_match_win_percentage(player):
     """
     Match Win % = Non-bye points / max possible points.
@@ -20,6 +51,8 @@ def calculate_player_match_win_percentage(player):
     Bye rounds are excluded.
     """
     tournament = player.tournament
+    if tournament.is_constructed():
+        return calculate_constructed_mwp(player)
     use_seats = tournament.seat_scoring
     flat_win = tournament.get_scoring_points()[1]
 

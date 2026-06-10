@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app import db
 from app.models.tournament import Tournament
 from app.models.round import Round
-from app.services.playoff_service import start_playoffs, advance_to_finals
+from app.services.playoff_service import start_playoffs, advance_to_finals, advance_constructed_playoffs
 from app.services.standings_service import calculate_standings
 
 bp = Blueprint('playoff', __name__, url_prefix='/playoffs')
@@ -46,10 +46,15 @@ def view_playoff(tournament_id):
 
 @bp.route('/tournament/<int:tournament_id>/advance', methods=['POST'])
 def advance(tournament_id):
+    tournament = Tournament.query.get_or_404(tournament_id)
     try:
-        round_obj = advance_to_finals(tournament_id)
+        if tournament.is_constructed():
+            round_obj = advance_constructed_playoffs(tournament_id)
+        else:
+            round_obj = advance_to_finals(tournament_id)
         db.session.commit()
-        flash('Finals generated!', 'success')
+        stage = 'Finals' if round_obj.playoff_stage == 'final' else 'Semifinals'
+        flash(f'{stage} generated!', 'success')
         return redirect(url_for('playoff.view_playoff', tournament_id=tournament_id))
     except ValueError as e:
         flash(str(e), 'error')

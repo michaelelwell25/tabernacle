@@ -10,6 +10,9 @@ class PodAssignment(db.Model):
     seat_position = db.Column(db.Integer)  # 1-4, can be randomized
     placement = db.Column(db.Integer)  # 1st, 2nd, 3rd, 4th (result)
     points_earned = db.Column(db.Float, default=0)
+    game_wins = db.Column(db.Integer)  # constructed (1v1) best-of-3 tracking
+    game_losses = db.Column(db.Integer)
+    game_draws = db.Column(db.Integer)
 
     # Unique constraint: one player per pod
     __table_args__ = (

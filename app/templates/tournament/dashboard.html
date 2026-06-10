@@ -22,6 +22,8 @@
     <div class="card-meta mt-1">
       <span>{{ tournament.date.strftime('%b %d, %Y') if tournament.date else '' }}</span>
       <span>&middot;</span>
+      <span class="badge badge-blue">{{ 'Constructed 1v1' if tournament.is_constructed() else 'Commander' }}</span>
+      <span>&middot;</span>
       <span>Scoring: {{ tournament.scoring_system }}</span>
       <span>&middot;</span>
       {% if tournament.status == 'registration' %}
@@ -87,6 +89,7 @@
       </form>
     </div>
   </div>
+  {% if not tournament.is_constructed() %}
   <div class="dashboard-panel">
     <div class="section-title">Settings</div>
     <div class="settings-stack">
@@ -104,6 +107,7 @@
       </form>
     </div>
   </div>
+  {% endif %}
 </div>
 {% else %}
 <div class="section">
@@ -134,10 +138,16 @@
     <p class="text-secondary">Cut to the top players and begin elimination rounds.</p>
     <form method="POST" action="{{ url_for('playoff.start_playoff', tournament_id=tournament.id) }}" class="inline-form">
       <div class="btn-group">
+        {% if tournament.is_constructed() %}
+        <button type="submit" name="cut_size" value="2" class="btn btn-outline">Top 2</button>
+        <button type="submit" name="cut_size" value="4" class="btn btn-outline">Top 4</button>
+        <button type="submit" name="cut_size" value="8" class="btn btn-outline">Top 8</button>
+        {% else %}
         <button type="submit" name="cut_size" value="4" class="btn btn-outline">Top 4</button>
         <button type="submit" name="cut_size" value="10" class="btn btn-outline">Top 10</button>
         <button type="submit" name="cut_size" value="13" class="btn btn-outline">Top 13</button>
         <button type="submit" name="cut_size" value="16" class="btn btn-outline">Top 16</button>
+        {% endif %}
       </div>
     </form>
   </div>

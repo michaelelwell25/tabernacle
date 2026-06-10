@@ -97,6 +97,46 @@
           <span class="text-accent bye-pts">+{{ tournament.bye_points }} pts</span>
         </div>
         {% endfor %}
+      {% elif tournament.is_constructed() %}
+        {% set match = pod.assignments.order_by('seat_position').all() %}
+        {% set p1, p2 = match[0], match[1] %}
+        {% for pp in match %}
+        <div class="pod-player-wrap" data-pid="{{ pp.player_id }}" data-podid="{{ pod.id }}" data-pname="{{ pp.player.name }}">
+          <div class="pod-player">
+            <div class="player-info">
+              <span>{{ pp.player.name }}</span>
+              {% if pp.player.commander %}
+              <span class="commander-tag">{{ pp.player.commander }}</span>
+              {% endif %}
+            </div>
+            {% if pp.placement == 1 %}
+            <span class="badge badge-green text-xs">WINNER {{ pp.game_wins }}-{{ pp.game_losses }}</span>
+            {% endif %}
+          </div>
+        </div>
+        {% if loop.first %}<div class="text-secondary text-xs" style="padding:0.1rem 0.5rem;">vs</div>{% endif %}
+        {% endfor %}
+        {% set winner = match|selectattr('placement', 'equalto', 1)|list|first %}
+        {% if winner %}
+          {% set current = winner.player_id ~ ':' ~ winner.game_wins ~ '-' ~ winner.game_losses %}
+        {% elif pod.status == 'completed' %}
+          {% set current = 'draw:' ~ (p1.game_wins or 0) ~ '-' ~ (p2.game_wins or 0) %}
+        {% else %}
+          {% set current = '' %}
+        {% endif %}
+        <select name="result_{{ pod.id }}" class="form-control mt-1">
+          <option value="">&mdash; Result &mdash;</option>
+          {% for score in ['2-0', '2-1', '1-0'] %}
+          <option value="{{ p1.player_id }}:{{ score }}" {{ 'selected' if current == p1.player_id ~ ':' ~ score }}>{{ p1.player.name }} wins {{ score }}</option>
+          {% endfor %}
+          {% for score in ['2-0', '2-1', '1-0'] %}
+          <option value="{{ p2.player_id }}:{{ score }}" {{ 'selected' if current == p2.player_id ~ ':' ~ score }}>{{ p2.player.name }} wins {{ score }}</option>
+          {% endfor %}
+          {% if not round.is_playoff %}
+          <option value="draw:1-1" {{ 'selected' if current == 'draw:1-1' }}>Draw 1-1</option>
+          <option value="draw:0-0" {{ 'selected' if current == 'draw:0-0' }}>Draw 0-0</option>
+          {% endif %}
+        </select>
       {% else %}
         {% for pp in pod.assignments %}
         <div class="pod-player-wrap" data-pid="{{ pp.player_id }}" data-podid="{{ pod.id }}" data-pname="{{ pp.player.name }}">

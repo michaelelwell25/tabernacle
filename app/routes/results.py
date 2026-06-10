@@ -7,8 +7,56 @@ from app.models.pod_assignment import PodAssignment
 bp = Blueprint('results', __name__, url_prefix='/results')
 
 
+def _save_constructed_results(round_obj):
+    """Parse 1v1 results. Form value: '<winner_id>:<w>-<l>' or 'draw:<g1>-<g2>'."""
+    tournament = round_obj.tournament
+    flat_win = tournament.get_scoring_points()[1]
+
+    for pod in round_obj.pods.order_by('pod_number').all():
+        if pod.is_bye:
+            continue
+
+        result = request.form.get(f'result_{pod.id}')
+        if not result or ':' not in result:
+            continue
+
+        outcome, score = result.split(':', 1)
+        g1, g2 = map(int, score.split('-'))
+        assignments = pod.assignments.order_by('seat_position').all()
+
+        if outcome == 'draw':
+            for assignment, own, opp in zip(assignments, (g1, g2), (g2, g1)):
+                assignment.placement = None
+                assignment.points_earned = tournament.draw_points
+                assignment.game_wins = own
+                assignment.game_losses = opp
+                assignment.game_draws = 0
+        else:
+            winner_id = int(outcome)
+            for assignment in assignments:
+                if assignment.player_id == winner_id:
+                    assignment.placement = 1
+                    assignment.points_earned = flat_win
+                    assignment.game_wins = g1
+                    assignment.game_losses = g2
+                else:
+                    assignment.placement = 2
+                    assignment.points_earned = 0
+                    assignment.game_wins = g2
+                    assignment.game_losses = g1
+                assignment.game_draws = 0
+
+        pod.status = 'completed'
+
+    db.session.commit()
+
+
 def _save_results(round_obj):
     tournament = round_obj.tournament
+
+    if tournament.is_constructed():
+        return _save_constructed_results(round_obj)
+
     pods = round_obj.pods.order_by('pod_number').all()
     scoring = tournament.get_scoring_points()
     flat_win = scoring[1]
@@ -75,6 +123,9 @@ def clear_pod_result(pod_id):
     for assignment in pod.assignments:
         assignment.placement = None
         assignment.points_earned = None
+        assignment.game_wins = None
+        assignment.game_losses = None
+        assignment.game_draws = None
     pod.status = 'pending'
     db.session.commit()
     flash(f'Table {pod.table_number} result cleared.', 'success')
