@@ -118,6 +118,31 @@ def test_results_submission(app):
     assert round_obj.is_complete()
 
 
+def test_results_with_drawn_games(app):
+    t = make_tournament(4)
+    round_obj = generate_swiss_pairings(t.id, 1)
+    pods = round_obj.pods.order_by('pod_number').all()
+
+    m1 = pods[0].assignments.order_by('seat_position').all()
+    m2 = pods[1].assignments.order_by('seat_position').all()
+    form = {
+        f'result_{pods[0].id}': 'draw:1-1-1',
+        f'result_{pods[1].id}': 'draw:0-0-3',
+    }
+    with app.test_request_context(method='POST', data=form):
+        _save_results(round_obj)
+
+    for a in m1:
+        assert (a.placement, a.points_earned) == (None, 1)
+        assert (a.game_wins, a.game_losses, a.game_draws) == (1, 1, 1)
+    for a in m2:
+        assert (a.game_wins, a.game_losses, a.game_draws) == (0, 0, 3)
+
+    # GW% counts drawn games: 1-1-1 -> (3+1)/(3*3); 0-0-3 -> 3/9
+    assert calculate_constructed_gwp(m1[0].player) == pytest.approx(4 / 9)
+    assert calculate_constructed_gwp(m2[0].player) == pytest.approx(1 / 3)
+
+
 def test_constructed_percentages(app):
     t = make_tournament(4)
     for rd in (1, 2):

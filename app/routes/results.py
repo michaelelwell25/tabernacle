@@ -8,7 +8,7 @@ bp = Blueprint('results', __name__, url_prefix='/results')
 
 
 def _save_constructed_results(round_obj):
-    """Parse 1v1 results. Form value: '<winner_id>:<w>-<l>' or 'draw:<g1>-<g2>'."""
+    """Parse 1v1 results. Form value: '<winner_id>:<w>-<l>[-<d>]' or 'draw:<g1>-<g2>[-<d>]'."""
     tournament = round_obj.tournament
     flat_win = tournament.get_scoring_points()[1]
 
@@ -21,7 +21,9 @@ def _save_constructed_results(round_obj):
             continue
 
         outcome, score = result.split(':', 1)
-        g1, g2 = map(int, score.split('-'))
+        parts = list(map(int, score.split('-')))
+        g1, g2 = parts[0], parts[1]
+        gd = parts[2] if len(parts) > 2 else 0
         assignments = pod.assignments.order_by('seat_position').all()
 
         if outcome == 'draw':
@@ -30,7 +32,7 @@ def _save_constructed_results(round_obj):
                 assignment.points_earned = tournament.draw_points
                 assignment.game_wins = own
                 assignment.game_losses = opp
-                assignment.game_draws = 0
+                assignment.game_draws = gd
         else:
             winner_id = int(outcome)
             for assignment in assignments:
@@ -44,7 +46,7 @@ def _save_constructed_results(round_obj):
                     assignment.points_earned = 0
                     assignment.game_wins = g2
                     assignment.game_losses = g1
-                assignment.game_draws = 0
+                assignment.game_draws = gd
 
         pod.status = 'completed'
 

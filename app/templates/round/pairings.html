@@ -120,7 +120,7 @@
         {% if winner %}
           {% set current = winner.player_id ~ ':' ~ winner.game_wins ~ '-' ~ winner.game_losses %}
         {% elif pod.status == 'completed' %}
-          {% set current = 'draw:' ~ (p1.game_wins or 0) ~ '-' ~ (p2.game_wins or 0) %}
+          {% set current = 'draw:' ~ (p1.game_wins or 0) ~ '-' ~ (p2.game_wins or 0) ~ ('-' ~ p1.game_draws if p1.game_draws else '') %}
         {% else %}
           {% set current = '' %}
         {% endif %}
@@ -134,6 +134,8 @@
           {% endfor %}
           {% if not round.is_playoff %}
           <option value="draw:1-1" {{ 'selected' if current == 'draw:1-1' }}>Draw 1-1</option>
+          <option value="draw:1-1-1" {{ 'selected' if current == 'draw:1-1-1' }}>Draw 1-1-1</option>
+          <option value="draw:0-0-3" {{ 'selected' if current == 'draw:0-0-3' }}>Draw 0-0-3</option>
           <option value="draw:0-0" {{ 'selected' if current == 'draw:0-0' }}>Draw 0-0</option>
           {% endif %}
         </select>
