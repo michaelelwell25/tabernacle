@@ -45,6 +45,9 @@ SLASH_COMMANDS = [
         'options': [{
             'type': 4, 'name': 'league_id', 'required': True,
             'description': 'League ID (the number in the league URL)',
+        }, {
+            'type': 7, 'name': 'pairings_channel', 'required': False,
+            'description': 'Post pairings to this channel instead (signups stay here)',
         }],
     },
 ]
@@ -73,9 +76,9 @@ def bot_invite_url():
 
 def send_test_message(league):
     """Returns (ok, detail)."""
-    if not league.discord_channel_id:
+    if not _posting_channel(league):
         return False, 'No Discord channel is linked to this league'
-    return post_channel_message(league.discord_channel_id, {
+    return post_channel_message(_posting_channel(league), {
         'content': f'👋 **{league.name}** is connected to Tabernacle! '
                    'Players can `/signup` and `/checkin` here, and pairings will be posted in this channel.'})
 
@@ -147,12 +150,12 @@ def post_round_pairings(tournament, round_obj):
     """Post pairings to the league's linked channel. Never raises."""
     try:
         league = tournament.league
-        if not league or not league.discord_channel_id:
+        if not league or not _posting_channel(league):
             return False
         if not os.environ.get('DISCORD_BOT_TOKEN'):
             return False
         payload = build_pairings_payload(tournament, round_obj)
-        ok, _ = post_channel_message(league.discord_channel_id, payload)
+        ok, _ = post_channel_message(_posting_channel(league), payload)
         return ok
     except Exception:
         return False
@@ -182,7 +185,14 @@ def _option(interaction, name):
 
 
 def _league_for_channel(channel_id):
-    return League.query.filter_by(discord_channel_id=str(channel_id)).first()
+    cid = str(channel_id)
+    return League.query.filter(
+        (League.discord_channel_id == cid) | (League.discord_pairings_channel_id == cid)
+    ).first()
+
+
+def _posting_channel(league):
+    return league.discord_pairings_channel_id or league.discord_channel_id
 
 
 def _open_week(league):
@@ -228,9 +238,12 @@ def _cmd_link(interaction):
         return _reply('League not found. Check the ID on the league dashboard URL.', ephemeral=True)
 
     league.discord_channel_id = str(interaction.get('channel_id'))
+    pairings_channel = _option(interaction, 'pairings_channel')
+    league.discord_pairings_channel_id = str(pairings_channel) if pairings_channel else None
     db.session.commit()
+    where = f'<#{pairings_channel}>' if pairings_channel else 'this channel'
     return _reply(f'This channel is now linked to **{league.name}**. '
-                  'Players can `/signup` and `/checkin` here, and pairings will be posted automatically.')
+                  f'Players can `/signup` and `/checkin` here; pairings will be posted to {where}.')
 
 
 def _get_or_claim_league_player(league, uid, name):

@@ -63,7 +63,11 @@
     <div class="card-meta mb-2">
       <span class="badge badge-green">Linked</span>
       <span>&middot;</span>
-      <span>Channel ID {{ league.discord_channel_id }}</span>
+      <span>Commands: {{ league.discord_channel_id }}</span>
+      {% if league.discord_pairings_channel_id %}
+      <span>&middot;</span>
+      <span>Pairings: {{ league.discord_pairings_channel_id }}</span>
+      {% endif %}
     </div>
     <p class="text-secondary mb-2">Players can <code>/signup</code> and <code>/checkin</code> in the linked channel. Pairings post there automatically when a round is generated.</p>
     <div class="btn-group">
@@ -86,7 +90,8 @@
       <a href="{{ discord_invite_url }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Add Bot to Your Server</a>
     </div>
     <form method="POST" action="{{ url_for('league.discord_settings', league_id=league.id) }}" class="form-row">
-      <input type="text" name="channel_id" class="form-control" placeholder="Discord channel ID" inputmode="numeric">
+      <input type="text" name="channel_id" class="form-control" placeholder="Commands channel ID" inputmode="numeric">
+      <input type="text" name="pairings_channel_id" class="form-control" placeholder="Pairings channel ID (optional)" inputmode="numeric">
       <button type="submit" class="btn btn-primary">Link Channel</button>
     </form>
     {% endif %}

@@ -19,6 +19,7 @@ with app.app_context():
         "ALTER TABLE pod_assignments ADD COLUMN game_draws INTEGER",
         "ALTER TABLE leagues ADD COLUMN discord_channel_id VARCHAR(32)",
         "ALTER TABLE league_players ADD COLUMN discord_user_id VARCHAR(32)",
+        "ALTER TABLE leagues ADD COLUMN discord_pairings_channel_id VARCHAR(32)",
     ]
     # Ensure first user is always admin (handles role default changes)
     try:

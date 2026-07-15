@@ -177,7 +177,7 @@ def test_link_channel_via_ui(client, league):
     r = client.post(f'/leagues/{league.id}/discord',
                     data={'channel_id': 'not-a-number'}, follow_redirects=True)
     assert league.discord_channel_id == '987654321'  # unchanged
-    assert b'must be a number' in r.data
+    assert b'must be numbers' in r.data
 
 
 def test_unlink_channel_via_ui(client, league):
@@ -207,6 +207,39 @@ def test_bot_invite_url(app, monkeypatch):
     monkeypatch.setenv('DISCORD_APP_ID', '12345')
     url = bot_invite_url()
     assert 'client_id=12345' in url and 'applications.commands' in url
+
+
+def test_split_channels(league, monkeypatch):
+    monkeypatch.setenv('DISCORD_BOT_TOKEN', 'x')
+    league.discord_pairings_channel_id = '888'
+    db.session.commit()
+
+    # commands still resolve from either channel
+    create_week_tournament(league, 1)
+    resp = handle_interaction(interaction('checkin'))  # main channel
+    assert 'checked in' in content(resp)
+    resp = handle_interaction(interaction('whosplaying', channel_id='888'))  # pairings channel
+    assert '1 checked in' in content(resp)
+
+    # posts target the pairings channel
+    import app.services.discord_service as ds
+    sent = {}
+
+    def fake_post(cid, payload):
+        sent['cid'] = cid
+        return True, ''
+
+    monkeypatch.setattr(ds, 'post_channel_message', fake_post)
+    ds.send_test_message(league)
+    assert sent['cid'] == '888'
+
+
+def test_link_with_pairings_channel_option(league):
+    resp = handle_interaction(interaction('link', options={'league_id': league.id, 'pairings_channel': '999'},
+                                          channel_id='555', permissions='32'))
+    assert league.discord_channel_id == '555'
+    assert league.discord_pairings_channel_id == '999'
+    assert '<#999>' in content(resp)
 
 
 def test_points_not_signed_up(league):

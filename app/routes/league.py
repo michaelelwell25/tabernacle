@@ -85,14 +85,17 @@ def discord_settings(league_id):
 
     if request.form.get('action') == 'unlink':
         league.discord_channel_id = None
+        league.discord_pairings_channel_id = None
         db.session.commit()
         flash('Discord channel unlinked', 'success')
     else:
         channel_id = request.form.get('channel_id', '').strip()
-        if not channel_id.isdigit():
-            flash('Channel ID must be a number (right-click the channel in Discord → Copy Channel ID)', 'error')
+        pairings_channel_id = request.form.get('pairings_channel_id', '').strip()
+        if not channel_id.isdigit() or (pairings_channel_id and not pairings_channel_id.isdigit()):
+            flash('Channel IDs must be numbers (right-click the channel in Discord → Copy Channel ID)', 'error')
         else:
             league.discord_channel_id = channel_id
+            league.discord_pairings_channel_id = pairings_channel_id or None
             db.session.commit()
             flash('Discord channel linked! Use "Send Test Message" to confirm the bot can post there.', 'success')
     return redirect(url_for('league.dashboard', league_id=league_id))
