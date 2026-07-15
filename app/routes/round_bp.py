@@ -65,6 +65,10 @@ def generate_round(tournament_id):
 
         db.session.commit()
 
+        from app.services.discord_service import post_round_pairings
+        if post_round_pairings(tournament, round_obj):
+            flash('Pairings posted to Discord', 'success')
+
         flash(f'Round {next_round_number} pairings generated!', 'success')
         return redirect(url_for('round.view_round', round_id=round_obj.id))
 

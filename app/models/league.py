@@ -10,6 +10,7 @@ class League(db.Model):
     num_weeks = db.Column(db.Integer, nullable=False)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     status = db.Column(db.String(20), default='active')  # active, completed
+    discord_channel_id = db.Column(db.String(32), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     league_players = db.relationship('LeaguePlayer', backref='league', lazy='dynamic', cascade='all, delete-orphan')

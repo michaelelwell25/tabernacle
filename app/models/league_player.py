@@ -9,6 +9,7 @@ class LeaguePlayer(db.Model):
     league_id = db.Column(db.Integer, db.ForeignKey('leagues.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     joined_week = db.Column(db.Integer, default=1)
+    discord_user_id = db.Column(db.String(32), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     player_links = db.relationship('LeaguePlayerLink', backref='league_player', lazy='dynamic', cascade='all, delete-orphan')

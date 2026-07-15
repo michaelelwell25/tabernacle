@@ -59,6 +59,28 @@ A Python web application for managing Swiss-format tournaments for competitive M
 5. **View Standings**: See current standings with tiebreakers
 6. **Export Data**: Download pairings and standings as CSV
 
+## Discord Integration
+
+Leagues can be linked to a Discord channel for automatic pairing announcements and player self-service signups.
+
+**Slash commands** (in the linked channel):
+- `/signup [name]` — join the league roster (defaults to your Discord name)
+- `/checkin` — check in for the current week's tournament (auto-signs you up if needed)
+- `/checkout` — withdraw from the current week
+- `/whosplaying` — list this week's check-ins
+- `/link league_id` — bind the channel to a league (requires Manage Server)
+
+When a round is generated for a league tournament, pairings are posted to the linked channel automatically, with @mentions for players who signed up via Discord.
+
+**Setup:**
+1. Create an application at https://discord.com/developers/applications, add a bot, and invite it to your server with the `bot` + `applications.commands` scopes and Send Messages permission.
+2. Set environment variables on the server: `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_BOT_TOKEN`.
+3. Set the application's **Interactions Endpoint URL** to `https://<your-host>/discord/interactions` (the app must be deployed with `DISCORD_PUBLIC_KEY` set first, or Discord's verification ping will fail).
+4. Register the slash commands once: `flask discord register-commands`
+5. In your league's channel, run `/link league_id` (the number in the league dashboard URL).
+
+Check-ins go to the latest week whose tournament is in `registration` status, so create the week's tournament before players check in.
+
 ## Swiss Pairing Algorithm
 
 The pairing algorithm:

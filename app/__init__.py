@@ -15,7 +15,7 @@ login_manager.login_message_category = 'info'
 PUBLIC_ENDPOINTS = {
     'player.join_tournament', 'player.moxfield_fetch',
     'judge.create_call', 'auth.login', 'auth.register',
-    'auth.logout', 'health', 'static',
+    'auth.logout', 'health', 'static', 'discord.interactions',
 }
 
 
@@ -39,8 +39,9 @@ def create_app(config_name='development'):
     app.register_blueprint(auth_bp)
 
     # App blueprints
-    from app.routes import tournament, player, round_bp, results, standings, export_bp, playoff, judge, league, admin
+    from app.routes import tournament, player, round_bp, results, standings, export_bp, playoff, judge, league, admin, discord_bp
     app.register_blueprint(tournament.bp)
+    app.register_blueprint(discord_bp.bp)
     app.register_blueprint(player.bp)
     app.register_blueprint(round_bp.bp)
     app.register_blueprint(results.bp)
