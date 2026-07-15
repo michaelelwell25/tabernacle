@@ -72,8 +72,9 @@ def bot_invite_url():
 
 
 def send_test_message(league):
-    if not league.discord_channel_id or not os.environ.get('DISCORD_BOT_TOKEN'):
-        return False
+    """Returns (ok, detail)."""
+    if not league.discord_channel_id:
+        return False, 'No Discord channel is linked to this league'
     return post_channel_message(league.discord_channel_id, {
         'content': f'👋 **{league.name}** is connected to Tabernacle! '
                    'Players can `/signup` and `/checkin` here, and pairings will be posted in this channel.'})
@@ -84,12 +85,20 @@ def _bot_headers():
 
 
 def post_channel_message(channel_id, payload):
+    """Returns (ok, detail); detail describes the failure and is logged."""
+    if not os.environ.get('DISCORD_BOT_TOKEN'):
+        return False, 'DISCORD_BOT_TOKEN is not set on the server'
     try:
         r = requests.post(f'{API_BASE}/channels/{channel_id}/messages',
                           json=payload, headers=_bot_headers(), timeout=5)
-        return r.ok
-    except requests.RequestException:
-        return False
+        if r.ok:
+            return True, ''
+        detail = f'Discord API {r.status_code}: {r.text[:200]}'
+        print(f'[discord] post to channel {channel_id} failed — {detail}')
+        return False, detail
+    except requests.RequestException as e:
+        print(f'[discord] post to channel {channel_id} error — {e}')
+        return False, f'Request failed: {e}'
 
 
 def register_commands():
@@ -143,7 +152,8 @@ def post_round_pairings(tournament, round_obj):
         if not os.environ.get('DISCORD_BOT_TOKEN'):
             return False
         payload = build_pairings_payload(tournament, round_obj)
-        return post_channel_message(league.discord_channel_id, payload)
+        ok, _ = post_channel_message(league.discord_channel_id, payload)
+        return ok
     except Exception:
         return False
 

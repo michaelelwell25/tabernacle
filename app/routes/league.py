@@ -104,11 +104,11 @@ def discord_test(league_id):
     _require_owner(league)
 
     from app.services.discord_service import send_test_message
-    if send_test_message(league):
+    ok, detail = send_test_message(league)
+    if ok:
         flash('Test message sent — check your Discord channel!', 'success')
     else:
-        flash('Could not post to the channel. Check that the bot is in your server, '
-              'has Send Messages permission there, and the channel ID is correct.', 'error')
+        flash(f'Could not post to the channel — {detail}', 'error')
     return redirect(url_for('league.dashboard', league_id=league_id))
 
 

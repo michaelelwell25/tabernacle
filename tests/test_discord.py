@@ -191,7 +191,7 @@ def test_send_test_message_route(client, league, monkeypatch):
 
     def fake_post(channel_id, payload):
         sent['channel_id'] = channel_id
-        return True
+        return True, ''
 
     import app.services.discord_service as ds
     monkeypatch.setattr(ds, 'post_channel_message', fake_post)
