@@ -143,6 +143,72 @@ def test_whosplaying(league):
     assert 'Alice' in content(resp) and 'Bob' in content(resp)
 
 
+@pytest.fixture
+def client(app, league):
+    from app.models.user import User
+    u = User(email='to@test.com', name='TO', role='admin')
+    u.set_password('secret123')
+    db.session.add(u)
+    db.session.commit()
+    c = app.test_client()
+    c.post('/login', data={'email': 'to@test.com', 'password': 'secret123'})
+    return c
+
+
+def test_dashboard_shows_discord_section(client, league, monkeypatch):
+    monkeypatch.setenv('DISCORD_APP_ID', '12345')
+    r = client.get(f'/leagues/{league.id}')
+    assert b'Add Bot to Your Server' not in r.data  # already linked in fixture
+    assert b'Send Test Message' in r.data
+
+    league.discord_channel_id = None
+    db.session.commit()
+    r = client.get(f'/leagues/{league.id}')
+    assert b'Add Bot to Your Server' in r.data
+    assert f'/link league_id:{league.id}'.encode() in r.data
+
+
+def test_link_channel_via_ui(client, league):
+    r = client.post(f'/leagues/{league.id}/discord',
+                    data={'channel_id': '987654321'}, follow_redirects=True)
+    assert r.status_code == 200
+    assert league.discord_channel_id == '987654321'
+
+    r = client.post(f'/leagues/{league.id}/discord',
+                    data={'channel_id': 'not-a-number'}, follow_redirects=True)
+    assert league.discord_channel_id == '987654321'  # unchanged
+    assert b'must be a number' in r.data
+
+
+def test_unlink_channel_via_ui(client, league):
+    client.post(f'/leagues/{league.id}/discord', data={'action': 'unlink'})
+    assert league.discord_channel_id is None
+
+
+def test_send_test_message_route(client, league, monkeypatch):
+    monkeypatch.setenv('DISCORD_BOT_TOKEN', 'x')
+    sent = {}
+
+    def fake_post(channel_id, payload):
+        sent['channel_id'] = channel_id
+        return True
+
+    import app.services.discord_service as ds
+    monkeypatch.setattr(ds, 'post_channel_message', fake_post)
+    r = client.post(f'/leagues/{league.id}/discord/test', follow_redirects=True)
+    assert b'Test message sent' in r.data
+    assert sent['channel_id'] == CHANNEL
+
+
+def test_bot_invite_url(app, monkeypatch):
+    from app.services.discord_service import bot_invite_url
+    monkeypatch.delenv('DISCORD_APP_ID', raising=False)
+    assert bot_invite_url() is None
+    monkeypatch.setenv('DISCORD_APP_ID', '12345')
+    url = bot_invite_url()
+    assert 'client_id=12345' in url and 'applications.commands' in url
+
+
 def test_pairings_payload_mentions_and_pods(league):
     t = create_week_tournament(league, 1)
     for i in range(8):

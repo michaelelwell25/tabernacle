@@ -56,6 +56,26 @@ def verify_signature(public_key_hex, signature, timestamp, body):
         return False
 
 
+INVITE_PERMISSIONS = 2048 | 16384  # Send Messages + Embed Links
+
+
+def bot_invite_url():
+    app_id = os.environ.get('DISCORD_APP_ID')
+    if not app_id:
+        return None
+    return ('https://discord.com/oauth2/authorize'
+            f'?client_id={app_id}&scope=bot+applications.commands'
+            f'&permissions={INVITE_PERMISSIONS}')
+
+
+def send_test_message(league):
+    if not league.discord_channel_id or not os.environ.get('DISCORD_BOT_TOKEN'):
+        return False
+    return post_channel_message(league.discord_channel_id, {
+        'content': f'👋 **{league.name}** is connected to Tabernacle! '
+                   'Players can `/signup` and `/checkin` here, and pairings will be posted in this channel.'})
+
+
 def _bot_headers():
     return {'Authorization': f"Bot {os.environ.get('DISCORD_BOT_TOKEN', '')}"}
 

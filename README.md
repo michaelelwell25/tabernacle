@@ -77,7 +77,9 @@ When a round is generated for a league tournament, pairings are posted to the li
 2. Set environment variables on the server: `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY`, `DISCORD_BOT_TOKEN`.
 3. Set the application's **Interactions Endpoint URL** to `https://<your-host>/discord/interactions` (the app must be deployed with `DISCORD_PUBLIC_KEY` set first, or Discord's verification ping will fail).
 4. Register the slash commands once: `flask discord register-commands`
-5. In your league's channel, run `/link league_id` (the number in the league dashboard URL).
+5. Link a channel either way:
+   - In Discord: run `/link league_id` in your league's channel, or
+   - In Tabernacle: on the league dashboard, use the **Discord** card to invite the bot, paste a channel ID, and send a test message.
 
 Check-ins go to the latest week whose tournament is in `registration` status, so create the week's tournament before players check in.
 

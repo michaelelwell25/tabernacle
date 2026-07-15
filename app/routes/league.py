@@ -67,8 +67,49 @@ def dashboard(league_id):
             'status': t.status if t else 'not_created',
         })
 
+    from app.services.discord_service import bot_invite_url
     return render_template('league/dashboard.html', league=league, weeks=weeks,
-                           standings=standings[:10], roster_count=roster_count)
+                           standings=standings[:10], roster_count=roster_count,
+                           discord_invite_url=bot_invite_url())
+
+
+def _require_owner(league):
+    if not current_user.is_admin() and league.owner_id != current_user.id:
+        abort(403)
+
+
+@bp.route('/<int:league_id>/discord', methods=['POST'])
+def discord_settings(league_id):
+    league = League.query.get_or_404(league_id)
+    _require_owner(league)
+
+    if request.form.get('action') == 'unlink':
+        league.discord_channel_id = None
+        db.session.commit()
+        flash('Discord channel unlinked', 'success')
+    else:
+        channel_id = request.form.get('channel_id', '').strip()
+        if not channel_id.isdigit():
+            flash('Channel ID must be a number (right-click the channel in Discord → Copy Channel ID)', 'error')
+        else:
+            league.discord_channel_id = channel_id
+            db.session.commit()
+            flash('Discord channel linked! Use "Send Test Message" to confirm the bot can post there.', 'success')
+    return redirect(url_for('league.dashboard', league_id=league_id))
+
+
+@bp.route('/<int:league_id>/discord/test', methods=['POST'])
+def discord_test(league_id):
+    league = League.query.get_or_404(league_id)
+    _require_owner(league)
+
+    from app.services.discord_service import send_test_message
+    if send_test_message(league):
+        flash('Test message sent — check your Discord channel!', 'success')
+    else:
+        flash('Could not post to the channel. Check that the bot is in your server, '
+              'has Send Messages permission there, and the channel ID is correct.', 'error')
+    return redirect(url_for('league.dashboard', league_id=league_id))
 
 
 @bp.route('/<int:league_id>/standings')
