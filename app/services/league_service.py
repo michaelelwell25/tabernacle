@@ -110,6 +110,7 @@ def _build_league_data(league):
             'league_player': lp,
             'wins': 0,
             'losses': 0,
+            'checkins': len(lp_to_links.get(lp.id, [])),
             'weeks_played': 0,
             'weekly': {},  # week_number -> {wins, losses, commander}
             'opponent_lp_ids': [],  # all opponents faced (as league_player_ids)
@@ -212,14 +213,15 @@ def calculate_league_standings(league):
         # Late-join bonus points
         late_join_pts = max(0, lp.joined_week - 1)
 
-        # League points: 2 per win, 1 per loss + late-join bonus
-        league_pts = (stats['wins'] * 2) + (stats['losses'] * 1) + late_join_pts
+        # League points: 5 per pod win, 1 per weekly check-in + late-join bonus
+        league_pts = (stats['wins'] * 5) + stats['checkins'] + late_join_pts
 
         standings.append({
             'league_player': lp,
             'league_points': league_pts,
             'wins': stats['wins'],
             'losses': stats['losses'],
+            'checkins': stats['checkins'],
             'total_matches': total_matches,
             'win_pct': win_pct,
             'opp_win_pct': ow_pct,
@@ -250,7 +252,7 @@ def get_week_recap(league, week_number):
                 'name': s['league_player'].name,
                 'week_wins': week_data['wins'],
                 'week_losses': week_data['losses'],
-                'week_pts': (week_data['wins'] * 2) + (week_data['losses'] * 1),
+                'week_pts': (week_data['wins'] * 5) + 1,  # 5 per pod win + check-in point
                 'commander': week_data['commander'],
                 'league_rank': s['rank'],
                 'league_points': s['league_points'],

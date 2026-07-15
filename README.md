@@ -68,6 +68,8 @@ Leagues can be linked to a Discord channel for automatic pairing announcements a
 - `/checkin` — check in for the current week's tournament (auto-signs you up if needed)
 - `/checkout` — withdraw from the current week
 - `/whosplaying` — list this week's check-ins
+- `/points` — your league points and rank (5 per pod win, 1 per weekly check-in)
+- `/standings` — league standings table
 - `/link league_id` — bind the channel to a league (requires Manage Server)
 
 When a round is generated for a league tournament, pairings are posted to the linked channel automatically, with @mentions for players who signed up via Discord.

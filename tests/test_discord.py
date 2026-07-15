@@ -209,6 +209,96 @@ def test_bot_invite_url(app, monkeypatch):
     assert 'client_id=12345' in url and 'applications.commands' in url
 
 
+def test_points_not_signed_up(league):
+    create_week_tournament(league, 1)
+    resp = handle_interaction(interaction('points'))
+    assert '/signup' in content(resp)
+
+
+def test_points_checkin_only(league):
+    create_week_tournament(league, 1)
+    handle_interaction(interaction('checkin'))
+    resp = handle_interaction(interaction('points'))
+    assert '1 league points' in content(resp)
+    assert '1 check-in (1 pt)' in content(resp)
+
+
+def test_points_with_completed_week(league):
+    t = create_week_tournament(league, 1)
+    for i, uid in enumerate(['1', '2', '3', '4', '5', '6', '7', '8']):
+        handle_interaction(interaction('checkin', user_id=uid, username=f'P{uid}'))
+    t.status = 'active'
+    db.session.commit()
+
+    round_obj = generate_swiss_pairings(t.id, 1)
+    for pod in round_obj.pods:
+        for j, a in enumerate(pod.assignments.order_by('seat_position').all()):
+            a.placement = j + 1
+            a.points_earned = 3 if j == 0 else 0
+    t.status = 'completed'
+    db.session.commit()
+
+    # find a pod winner's discord id
+    winner_id = round_obj.pods.first().assignments.order_by('seat_position').first().player
+    lp_link = LeaguePlayerLink.query.filter_by(player_id=winner_id.id).first()
+    winner_lp = LeaguePlayer.query.get(lp_link.league_player_id)
+
+    resp = handle_interaction(interaction('points', user_id=winner_lp.discord_user_id))
+    # 1 pod win (5) + 1 check-in (1) = 6
+    assert '6 league points' in content(resp)
+    assert '1 pod win (5 pts)' in content(resp)
+
+    # a non-winner: 0 wins + 1 check-in = 1
+    loser_a = round_obj.pods.first().assignments.order_by('seat_position').all()[1]
+    loser_link = LeaguePlayerLink.query.filter_by(player_id=loser_a.player_id).first()
+    loser_lp = LeaguePlayer.query.get(loser_link.league_player_id)
+    resp = handle_interaction(interaction('points', user_id=loser_lp.discord_user_id))
+    assert '1 league points' in content(resp)
+
+
+def test_standings_new_formula(league):
+    from app.services.league_service import calculate_league_standings
+    t = create_week_tournament(league, 1)
+    for uid in ['1', '2', '3', '4']:
+        handle_interaction(interaction('checkin', user_id=uid, username=f'P{uid}'))
+    t.status = 'active'
+    db.session.commit()
+    round_obj = generate_swiss_pairings(t.id, 1)
+    for pod in round_obj.pods:
+        for j, a in enumerate(pod.assignments.order_by('seat_position').all()):
+            a.placement = j + 1
+            a.points_earned = 3 if j == 0 else 0
+    t.status = 'completed'
+    db.session.commit()
+
+    standings = calculate_league_standings(league)
+    assert standings[0]['league_points'] == 6  # 1 win * 5 + 1 check-in
+    assert all(s['league_points'] == 1 for s in standings[1:])  # check-in only
+
+
+def test_standings_command(league):
+    resp = handle_interaction(interaction('standings'))
+    assert 'No standings yet' in content(resp)
+
+    t = create_week_tournament(league, 1)
+    for uid in ['1', '2', '3', '4']:
+        handle_interaction(interaction('checkin', user_id=uid, username=f'P{uid}'))
+    t.status = 'active'
+    db.session.commit()
+    round_obj = generate_swiss_pairings(t.id, 1)
+    for pod in round_obj.pods:
+        for j, a in enumerate(pod.assignments.order_by('seat_position').all()):
+            a.placement = j + 1
+            a.points_earned = 3 if j == 0 else 0
+    t.status = 'completed'
+    db.session.commit()
+
+    resp = handle_interaction(interaction('standings'))
+    body = content(resp)
+    assert 'Test League Standings' in body
+    assert '🥇' in body and '6 pts' in body and '1W' in body
+
+
 def test_pairings_payload_mentions_and_pods(league):
     t = create_week_tournament(league, 1)
     for i in range(8):

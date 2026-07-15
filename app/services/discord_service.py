@@ -13,7 +13,8 @@ from app.models.league_player import LeaguePlayer
 from app.models.league_player_link import LeaguePlayerLink
 from app.models.player import Player
 from app.models.tournament import Tournament
-from app.services.league_service import get_or_create_league_player, add_player_to_week
+from app.services.league_service import get_or_create_league_player, add_player_to_week, \
+    calculate_league_standings
 
 API_BASE = 'https://discord.com/api/v10'
 MANAGE_GUILD = 0x20
@@ -35,6 +36,8 @@ SLASH_COMMANDS = [
     {'name': 'checkin', 'description': "Check in for this week's tournament"},
     {'name': 'checkout', 'description': "Withdraw from this week's tournament"},
     {'name': 'whosplaying', 'description': 'See who is checked in this week'},
+    {'name': 'points', 'description': 'Check your league points and rank'},
+    {'name': 'standings', 'description': 'Show the league standings'},
     {
         'name': 'link',
         'description': 'Link this channel to a league (requires Manage Server)',
@@ -193,7 +196,8 @@ def handle_interaction(interaction):
                       'An admin can run `/link league_id` first.', ephemeral=True)
 
     handlers = {'signup': _cmd_signup, 'checkin': _cmd_checkin,
-                'checkout': _cmd_checkout, 'whosplaying': _cmd_whosplaying}
+                'checkout': _cmd_checkout, 'whosplaying': _cmd_whosplaying,
+                'points': _cmd_points, 'standings': _cmd_standings}
     handler = handlers.get(command)
     if not handler:
         return _reply(f'Unknown command: {command}', ephemeral=True)
@@ -294,6 +298,43 @@ def _cmd_checkout(league, interaction):
         db.session.delete(player)
     db.session.commit()
     return _reply(f'👋 **{lp.name}** is out for Week {tournament.week_number}.')
+
+
+def _cmd_points(league, interaction):
+    uid, _ = _interaction_user(interaction)
+    lp = LeaguePlayer.query.filter_by(league_id=league.id, discord_user_id=uid).first()
+    if not lp:
+        return _reply('You are not on the roster yet — run `/signup` first.', ephemeral=True)
+
+    standings = calculate_league_standings(league)
+    s = next((x for x in standings if x['league_player'].id == lp.id), None)
+    if not s:
+        return _reply('No stats for you yet — check in and play a week first.', ephemeral=True)
+
+    parts = [f"{s['wins']} pod win{'s' if s['wins'] != 1 else ''} ({s['wins'] * 5} pts)",
+             f"{s['checkins']} check-in{'s' if s['checkins'] != 1 else ''} ({s['checkins']} pt{'s' if s['checkins'] != 1 else ''})"]
+    if s['late_join_pts']:
+        parts.append(f"late-join bonus ({s['late_join_pts']} pts)")
+    return _reply(f"🏆 **{lp.name}** — **{s['league_points']} league points**, "
+                  f"rank {s['rank']} of {len(standings)}\n" + ' · '.join(parts),
+                  ephemeral=True)
+
+
+def _cmd_standings(league, interaction):
+    standings = calculate_league_standings(league)
+    if not standings:
+        return _reply('No standings yet — nobody is on the roster.', ephemeral=True)
+
+    medals = {1: '🥇', 2: '🥈', 3: '🥉'}
+    lines = []
+    for s in standings[:10]:
+        rank = medals.get(s['rank'], f"{s['rank']}.")
+        lines.append(f"{rank} **{s['league_player'].name}** — {s['league_points']} pts "
+                     f"({s['wins']}W, {s['checkins']} week{'s' if s['checkins'] != 1 else ''})")
+    title = f'**{league.name} Standings**'
+    if len(standings) > 10:
+        title += f' (top 10 of {len(standings)})'
+    return _reply(title + '\n' + '\n'.join(lines))
 
 
 def _cmd_whosplaying(league, interaction):

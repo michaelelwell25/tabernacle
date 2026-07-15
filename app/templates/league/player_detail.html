@@ -71,7 +71,7 @@
         {% set ns = namespace(running=s.late_join_pts) %}
         {% for wk in range(1, league.num_weeks + 1) %}
         {% if wk in s.weekly %}
-        {% set wk_pts = s.weekly[wk].wins * 2 + s.weekly[wk].losses %}
+        {% set wk_pts = s.weekly[wk].wins * 5 + 1 %}
         {% set ns.running = ns.running + wk_pts %}
         <tr>
           <td>Week {{ wk }}</td>
