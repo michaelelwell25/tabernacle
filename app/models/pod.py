@@ -12,7 +12,9 @@ class Pod(db.Model):
     is_bye = db.Column(db.Boolean, default=False)
 
     # Relationships
-    assignments = db.relationship('PodAssignment', backref='pod', lazy='dynamic', cascade='all, delete-orphan')
+    assignments = db.relationship('PodAssignment', backref='pod', lazy='dynamic',
+                                  order_by='PodAssignment.seat_position',
+                                  cascade='all, delete-orphan')
 
     # Unique constraint: one pod number per round
     __table_args__ = (
