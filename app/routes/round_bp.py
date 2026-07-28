@@ -66,7 +66,7 @@ def generate_round(tournament_id):
         db.session.commit()
 
         from app.services.discord_service import post_round_pairings
-        if post_round_pairings(tournament, round_obj):
+        if post_round_pairings(tournament, round_obj)[0]:
             flash('Pairings posted to Discord', 'success')
 
         flash(f'Round {next_round_number} pairings generated!', 'success')
@@ -75,6 +75,19 @@ def generate_round(tournament_id):
     except ValueError as e:
         flash(str(e), 'error')
         return redirect(url_for('tournament.view_tournament', tournament_id=tournament_id))
+
+
+@bp.route('/<int:round_id>/announce', methods=['POST'])
+def announce_pairings(round_id):
+    """Manually (re)post this round's pairings to Discord."""
+    from app.services.discord_service import post_round_pairings
+    round_obj = Round.query.get_or_404(round_id)
+    ok, detail = post_round_pairings(round_obj.tournament, round_obj)
+    if ok:
+        flash(f'Round {round_obj.round_number} pairings posted to Discord', 'success')
+    else:
+        flash(f'Could not post to Discord — {detail}', 'error')
+    return redirect(url_for('round.view_round', round_id=round_id))
 
 
 @bp.route('/<int:round_id>/timer', methods=['POST'])

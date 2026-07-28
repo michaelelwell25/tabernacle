@@ -165,6 +165,11 @@ def submit_and_next(round_id):
         new_round = generate_swiss_pairings(tournament.id, next_round_number)
         tournament.current_round = next_round_number
         db.session.commit()
+
+        from app.services.discord_service import post_round_pairings
+        if post_round_pairings(tournament, new_round)[0]:
+            flash('Pairings posted to Discord', 'success')
+
         flash(f'Results saved! Round {new_round.round_number} generated.', 'success')
         return redirect(url_for('round.view_round', round_id=new_round.id))
     except Exception as e:

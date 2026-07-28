@@ -183,6 +183,10 @@
     <a href="{{ url_for('round.print_slips', round_id=round.id) }}" class="btn btn-outline" target="_blank">Print Slips</a>
     <button type="button" class="btn btn-outline" onclick="window.open('{{ url_for('round.tv_display', round_id=round.id) }}','TabernacleTV','width=1920,height=1080')">TV Display</button>
     <a href="{{ url_for('standings.view_standings', tournament_id=tournament.id) }}" class="btn btn-secondary">Standings</a>
+    {% if tournament.league %}
+    <button type="button" class="btn btn-outline" id="announceBtn"
+            onclick="this.disabled=true;fetch('{{ url_for('round.announce_pairings', round_id=round.id) }}',{method:'POST'}).then(()=>location.reload())">Post to Discord</button>
+    {% endif %}
     <button type="button" class="btn btn-outline" id="editBtn" onclick="toggleSwapMode()">Edit Pairings</button>
   </div>
 </div>

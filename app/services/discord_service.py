@@ -147,18 +147,23 @@ def build_pairings_payload(tournament, round_obj):
 
 
 def post_round_pairings(tournament, round_obj):
-    """Post pairings to the league's linked channel. Never raises."""
+    """Post pairings to the league's linked channel. Never raises.
+
+    Returns (ok, detail); detail explains the failure so callers can surface it.
+    """
     try:
         league = tournament.league
-        if not league or not _posting_channel(league):
-            return False
+        if not league:
+            return False, 'This tournament is not part of a league'
+        if not _posting_channel(league):
+            return False, 'No Discord channel is linked to this league'
         if not os.environ.get('DISCORD_BOT_TOKEN'):
-            return False
+            return False, 'DISCORD_BOT_TOKEN is not set on the server'
         payload = build_pairings_payload(tournament, round_obj)
-        ok, _ = post_channel_message(_posting_channel(league), payload)
-        return ok
-    except Exception:
-        return False
+        return post_channel_message(_posting_channel(league), payload)
+    except Exception as e:
+        print(f'[discord] pairing post failed — {e}')
+        return False, f'Unexpected error: {e}'
 
 
 # ---------- Interaction handling ----------
