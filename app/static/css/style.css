@@ -434,6 +434,18 @@ a:hover {
   color: #fff;
 }
 
+.btn-warning {
+  background: var(--warning);
+  color: #0f1117;
+  font-weight: 700;
+}
+
+.btn-warning:hover {
+  background: #fcd34d;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.25);
+  color: #0f1117;
+}
+
 .btn-secondary {
   background: var(--secondary);
   color: var(--text-primary);
@@ -1151,6 +1163,17 @@ select.form-control {
 }
 
 /* ---- SWAP / EDIT MODE ---- */
+
+.correction-banner {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  padding: 0.7rem 1.1rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--warning);
+}
 
 .swap-banner {
   display: flex;

@@ -108,7 +108,11 @@ def submit_results(round_id):
 
     if request.method == 'POST':
         _save_results(round_obj)
-        flash(f'Results for Round {round_obj.round_number} saved!', 'success')
+        if tournament.status == 'completed':
+            msg = f'Results for Round {round_obj.round_number} corrected — standings recalculated.'
+        else:
+            msg = f'Results for Round {round_obj.round_number} saved!'
+        flash(msg, 'success')
         return redirect(url_for('round.view_round', round_id=round_id))
 
     pods = round_obj.pods.order_by('pod_number').all()

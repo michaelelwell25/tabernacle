@@ -190,6 +190,19 @@
     <button type="button" class="btn btn-outline" id="editBtn" onclick="toggleSwapMode()">Edit Pairings</button>
   </div>
 </div>
+{% elif tournament.status == 'completed' %}
+<div class="section mt-2">
+  <div class="correction-banner">
+    <span>&#9888; Tournament is complete. Changes here correct the record{% if tournament.league %} and immediately recalculate league standings{% endif %}.</span>
+  </div>
+  <div class="btn-group">
+    <button type="submit" class="btn btn-warning btn-lg">Save Corrected Results</button>
+    <a href="{{ url_for('standings.view_standings', tournament_id=tournament.id) }}" class="btn btn-secondary">Standings</a>
+    {% if tournament.league %}
+    <a href="{{ url_for('league.standings', league_id=tournament.league_id) }}" class="btn btn-secondary">League Standings</a>
+    {% endif %}
+  </div>
+</div>
 {% endif %}
 </form>
 
