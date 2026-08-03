@@ -66,6 +66,16 @@ def add_player_to_week(league_player, tournament, commander=None, decklist_url=N
         tournament_id=tournament.id, name=league_player.name
     ).first()
     if existing_player:
+        # Registered directly into the week (e.g. a late arrival entered by hand).
+        # Adopt that row so their results count for this league player.
+        already_linked = LeaguePlayerLink.query.filter_by(player_id=existing_player.id).first()
+        if not already_linked:
+            db.session.add(LeaguePlayerLink(
+                league_player_id=league_player.id,
+                player_id=existing_player.id,
+                tournament_id=tournament.id
+            ))
+            db.session.commit()
         return existing_player
 
     player = Player(
@@ -85,6 +95,24 @@ def add_player_to_week(league_player, tournament, commander=None, decklist_url=N
     db.session.add(link)
     db.session.commit()
     return player
+
+
+def get_unlinked_counts(league):
+    """Players registered in a league week with no roster link, per week.
+    Their results silently miss the league standings. Returns {week_number: count}."""
+    tournaments = Tournament.query.filter_by(league_id=league.id).all()
+    if not tournaments:
+        return {}
+    t_ids = [t.id for t in tournaments]
+    linked = {link.player_id for link in
+              LeaguePlayerLink.query.filter(LeaguePlayerLink.tournament_id.in_(t_ids)).all()}
+
+    counts = {}
+    for t in tournaments:
+        n = sum(1 for p in Player.query.filter_by(tournament_id=t.id).all() if p.id not in linked)
+        if n:
+            counts[t.week_number] = n
+    return counts
 
 
 def _build_league_data(league):

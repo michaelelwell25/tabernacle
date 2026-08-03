@@ -201,8 +201,11 @@ def _posting_channel(league):
 
 
 def _open_week(league):
-    return Tournament.query.filter_by(league_id=league.id, status='registration') \
-        .order_by(Tournament.week_number.desc()).first()
+    """Week accepting check-ins. Prefers one still in registration, but an
+    already-started week stays open so late arrivals can still check in."""
+    q = Tournament.query.filter_by(league_id=league.id)
+    return (q.filter_by(status='registration').order_by(Tournament.week_number.desc()).first()
+            or q.filter_by(status='active').order_by(Tournament.week_number.desc()).first())
 
 
 def handle_interaction(interaction):
@@ -304,6 +307,9 @@ def _cmd_checkin(league, interaction):
 
     add_player_to_week(lp, tournament)
     count = Player.query.filter_by(tournament_id=tournament.id, dropped=False).count()
+    if tournament.status == 'active':
+        return _reply(f'✅ **{lp.name}** is in for Week {tournament.week_number} — the week has already '
+                      f'started, so you will be paired in the next round ({count} players).')
     return _reply(f'✅ **{lp.name}** is checked in for Week {tournament.week_number} '
                   f'({count} player{"s" if count != 1 else ""} so far).')
 
@@ -321,6 +327,15 @@ def _cmd_checkout(league, interaction):
         return _reply(f'You are not checked in for Week {tournament.week_number}.', ephemeral=True)
 
     player = Player.query.get(link.player_id)
+    if player and player.pod_assignments.count():
+        # Already seated at a table this week — drop instead of delete so the
+        # rounds they played stay intact.
+        player.dropped = True
+        player.drop_round = tournament.current_round
+        db.session.commit()
+        return _reply(f'👋 **{lp.name}** is dropped from Week {tournament.week_number} '
+                      '(results already played still count).')
+
     db.session.delete(link)
     if player:
         db.session.delete(player)

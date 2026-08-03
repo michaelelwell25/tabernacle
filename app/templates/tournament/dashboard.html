@@ -83,6 +83,9 @@
       {% endif %}
       <a href="{{ url_for('standings.view_standings', tournament_id=tournament.id) }}" class="btn btn-secondary btn-block">Standings</a>
       <a href="{{ url_for('player.list_players', tournament_id=tournament.id) }}" class="btn btn-secondary btn-block">Players</a>
+      {% if tournament.league %}
+      <a href="{{ url_for('league.add_players', league_id=tournament.league.id, week_number=tournament.week_number) }}" class="btn btn-secondary btn-block">Add Late Players</a>
+      {% endif %}
       <a href="{{ url_for('judge.judge_queue', tournament_id=tournament.id) }}" class="btn btn-outline btn-block">Judge Queue</a>
       <form method="POST" action="{{ url_for('tournament.complete_tournament', tournament_id=tournament.id) }}" class="inline-form">
         <button type="submit" class="btn btn-secondary btn-block">Complete Tournament</button>
@@ -115,6 +118,9 @@
   <div class="btn-group">
     {% if tournament.status == 'registration' %}
     <a href="{{ url_for('player.list_players', tournament_id=tournament.id) }}" class="btn btn-primary">Manage Players</a>
+    {% if tournament.league %}
+    <a href="{{ url_for('league.add_players', league_id=tournament.league.id, week_number=tournament.week_number) }}" class="btn btn-secondary">Add from Roster</a>
+    {% endif %}
     <form method="POST" action="{{ url_for('tournament.start_tournament', tournament_id=tournament.id) }}" class="inline-form">
       <button type="submit" class="btn btn-primary">Start Tournament</button>
     </form>

@@ -10,7 +10,7 @@ from app.models.player import Player
 from app.services.league_service import (
     create_league, create_week_tournament, get_or_create_league_player,
     add_player_to_week, calculate_league_standings, get_week_recap,
-    get_player_detail, get_roster_search
+    get_player_detail, get_roster_search, get_unlinked_counts
 )
 
 bp = Blueprint('league', __name__, url_prefix='/leagues')
@@ -59,12 +59,14 @@ def dashboard(league_id):
     # Build week status list
     weeks = []
     t_by_week = {t.week_number: t for t in tournaments}
+    unlinked_counts = get_unlinked_counts(league)
     for w in range(1, league.num_weeks + 1):
         t = t_by_week.get(w)
         weeks.append({
             'number': w,
             'tournament': t,
             'status': t.status if t else 'not_created',
+            'unlinked': unlinked_counts.get(w, 0),
         })
 
     from app.services.discord_service import bot_invite_url
@@ -187,8 +189,46 @@ def add_roster_player(league_id):
 def add_players(league_id, week_number):
     league = League.query.get_or_404(league_id)
     tournament = Tournament.query.filter_by(league_id=league_id, week_number=week_number).first_or_404()
+    # Late arrivals can still be added once the week is underway; they get paired
+    # into the next generated round. Playoffs/completed weeks are closed.
+    can_add = tournament.status in ('registration', 'active')
+    late = tournament.status == 'active'
+
+    if request.method == 'POST' and request.form.get('action') == 'link':
+        # Repair: attach a manually-registered player to their league roster entry
+        # so this week's results land on the right league account.
+        player = Player.query.filter_by(
+            id=request.form.get('player_id', type=int), tournament_id=tournament.id
+        ).first()
+        lp_id = request.form.get('link_league_player_id', type=int)
+        if lp_id == 0 and player:
+            # No roster entry yet — create one from the registered name
+            lp = get_or_create_league_player(league.id, player.name, week_number)
+        else:
+            lp = LeaguePlayer.query.filter_by(id=lp_id, league_id=league.id).first() if lp_id else None
+
+        if not player or not lp:
+            flash('Could not find that player', 'error')
+        elif LeaguePlayerLink.query.filter_by(player_id=player.id).first():
+            flash(f'"{player.name}" is already linked', 'error')
+        elif LeaguePlayerLink.query.filter_by(league_player_id=lp.id, tournament_id=tournament.id).first():
+            flash(f'"{lp.name}" is already checked in for Week {week_number} under another entry — '
+                  f'delete the duplicate player before linking.', 'error')
+        else:
+            db.session.add(LeaguePlayerLink(league_player_id=lp.id, player_id=player.id,
+                                            tournament_id=tournament.id))
+            if lp.joined_week and week_number < lp.joined_week:
+                lp.joined_week = week_number
+            db.session.commit()
+            flash(f'Linked "{player.name}" to league player "{lp.name}" — '
+                  f'Week {week_number} now counts toward their league total', 'success')
+        return redirect(url_for('league.add_players', league_id=league_id, week_number=week_number))
 
     if request.method == 'POST':
+        if not can_add:
+            flash(f'Week {week_number} is closed to new players', 'error')
+            return redirect(url_for('tournament.view_tournament', tournament_id=tournament.id))
+
         # Handle adding selected roster players
         selected_ids = request.form.getlist('league_player_ids')
         new_name = request.form.get('new_player_name', '').strip()
@@ -215,19 +255,32 @@ def add_players(league_id, week_number):
                 added += 1
 
         if added:
-            flash(f'Added {added} player{"s" if added != 1 else ""} to Week {week_number}', 'success')
+            msg = f'Added {added} player{"s" if added != 1 else ""} to Week {week_number}'
+            if late:
+                msg += ' — they will be paired in the next round you generate'
+            flash(msg, 'success')
         return redirect(url_for('league.add_players', league_id=league_id, week_number=week_number))
 
     # GET: show roster with checkboxes
     roster = league.league_players.order_by(LeaguePlayer.name).all()
     # Mark who is already in this week
-    linked_lp_ids = set()
     links = LeaguePlayerLink.query.filter_by(tournament_id=tournament.id).all()
-    for link in links:
-        linked_lp_ids.add(link.league_player_id)
+    linked_lp_ids = {link.league_player_id for link in links}
+    linked_player_ids = {link.player_id for link in links}
+
+    # Players registered straight into the week without a roster link — their
+    # results are not counting toward anyone's league standing.
+    unlinked = [p for p in tournament.players.order_by(Player.name).all()
+                if p.id not in linked_player_ids]
+    link_options = [lp for lp in roster if lp.id not in linked_lp_ids]
+    # Suggest the roster entry whose name matches, so the obvious case is one click
+    by_name = {lp.name.strip().lower(): lp.id for lp in link_options}
+    suggested = {p.id: by_name.get(p.name.strip().lower()) for p in unlinked}
 
     return render_template('league/add_players.html', league=league, tournament=tournament,
-                           week_number=week_number, roster=roster, linked_lp_ids=linked_lp_ids)
+                           week_number=week_number, roster=roster, linked_lp_ids=linked_lp_ids,
+                           can_add=can_add, late=late, unlinked=unlinked,
+                           link_options=link_options, suggested=suggested)
 
 
 @bp.route('/<int:league_id>/player/<int:lp_id>')

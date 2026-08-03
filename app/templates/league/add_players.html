@@ -12,10 +12,69 @@
 
 <div class="page-header">
   <div>
-    <h1>Add Players - Week {{ week_number }}</h1>
+    <h1>{{ 'Add Late Players' if late else 'Add Players' }} - Week {{ week_number }}</h1>
     <div class="card-meta mt-1">Select from roster or add new players</div>
   </div>
 </div>
+
+{% if late %}
+<div class="card mb-2">
+  <strong>Week {{ week_number }} is in progress.</strong>
+  <span class="text-secondary">
+    Players added now start at 0 points and get paired into the next round you generate.
+    They still get their league check-in point.
+  </span>
+</div>
+{% elif not can_add %}
+<div class="card mb-2">
+  <span class="text-secondary">Week {{ week_number }} is closed to new players ({{ tournament.status }}).</span>
+</div>
+{% endif %}
+
+{% if unlinked %}
+<div class="section">
+  <div class="section-title">Not Linked to the League ({{ unlinked|length }})</div>
+  <p class="text-secondary mb-2">
+    These players are registered for Week {{ week_number }} but are not attached to a league roster entry,
+    so their wins and check-in point are not counting toward anyone's league standing.
+    Link each one to the roster entry they play under.
+  </p>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Registered As</th>
+          <th class="text-center">Pts</th>
+          <th class="text-center">Matches</th>
+          <th>Link to League Player</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in unlinked %}
+        <tr>
+          <td><span class="player-name">{{ p.name }}</span></td>
+          <td class="text-center">{{ p.get_total_points() }}</td>
+          <td class="text-center">{{ p.get_matches_played() }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('league.add_players', league_id=league.id, week_number=week_number) }}" class="form-row items-center">
+              <input type="hidden" name="action" value="link">
+              <input type="hidden" name="player_id" value="{{ p.id }}">
+              <select name="link_league_player_id" class="form-control input-compact">
+                <option value="0" {% if not suggested.get(p.id) %}selected{% endif %}>+ New roster entry "{{ p.name }}"</option>
+                {% for lp in link_options %}
+                <option value="{{ lp.id }}" {% if suggested.get(p.id) == lp.id %}selected{% endif %}>{{ lp.name }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-primary btn-sm">Link</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 
 <div class="card form-card">
   <form method="POST" action="{{ url_for('league.add_players', league_id=league.id, week_number=week_number) }}">
@@ -23,11 +82,14 @@
     {% if roster %}
     <div class="form-group">
       <label class="form-label">League Roster</label>
+      {% if roster|length > 8 %}
+      <input type="text" id="rosterSearch" class="form-control mb-1" placeholder="Search roster..." oninput="filterRoster()">
+      {% endif %}
       <div class="checkbox-grid">
         {% for lp in roster %}
-        <label class="checkbox-item {% if lp.id in linked_lp_ids %}checked-item{% endif %}">
+        <label class="checkbox-item roster-item {% if lp.id in linked_lp_ids %}checked-item{% endif %}">
           <input type="checkbox" name="league_player_ids" value="{{ lp.id }}"
-                 {% if lp.id in linked_lp_ids %}checked disabled{% endif %}>
+                 {% if lp.id in linked_lp_ids %}checked disabled{% elif not can_add %}disabled{% endif %}>
           <span>{{ lp.name }}</span>
           {% if lp.id in linked_lp_ids %}<span class="badge badge-green text-xs">Added</span>{% endif %}
         </label>
@@ -38,14 +100,26 @@
 
     <div class="form-group">
       <label class="form-label" for="new_player_name">Add New Player</label>
-      <input type="text" id="new_player_name" name="new_player_name" class="form-control" placeholder="New player name (also adds to league roster)">
+      <input type="text" id="new_player_name" name="new_player_name" class="form-control"
+             placeholder="New player name (also adds to league roster)" {% if not can_add %}disabled{% endif %}>
     </div>
 
     <div class="btn-group mt-2">
+      {% if can_add %}
       <button type="submit" class="btn btn-primary">Add Selected Players</button>
+      {% endif %}
       <a href="{{ url_for('tournament.view_tournament', tournament_id=tournament.id) }}" class="btn btn-outline">Go to Tournament</a>
       <a href="{{ url_for('league.dashboard', league_id=league.id) }}" class="btn btn-outline">Back to League</a>
     </div>
   </form>
 </div>
+
+<script>
+function filterRoster() {
+  const q = document.getElementById('rosterSearch').value.toLowerCase();
+  document.querySelectorAll('.roster-item').forEach(el => {
+    el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
 {% endblock %}

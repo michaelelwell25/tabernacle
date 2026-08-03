@@ -63,16 +63,27 @@ def register_player(tournament_id):
             if fetched_commander:
                 commander = fetched_commander
 
-        player = Player(
-            tournament_id=tournament_id,
-            name=name,
-            commander=commander if commander else None,
-            decklist_url=decklist_url if decklist_url else None,
-            dci_number=dci_number if dci_number else None
-        )
+        if tournament.league_id:
+            # League week: register through the roster so the check-in counts in
+            # league standings, even for someone showing up mid-tournament.
+            from app.services.league_service import get_or_create_league_player, add_player_to_week
+            lp = get_or_create_league_player(tournament.league_id, name, tournament.week_number or 1)
+            player = add_player_to_week(lp, tournament, commander=commander or None,
+                                        decklist_url=decklist_url or None)
+            if dci_number:
+                player.dci_number = dci_number
+                db.session.commit()
+        else:
+            player = Player(
+                tournament_id=tournament_id,
+                name=name,
+                commander=commander if commander else None,
+                decklist_url=decklist_url if decklist_url else None,
+                dci_number=dci_number if dci_number else None
+            )
 
-        db.session.add(player)
-        db.session.commit()
+            db.session.add(player)
+            db.session.commit()
 
         flash(f'Player "{name}" registered successfully!', 'success')
         return redirect(url_for('player.list_players', tournament_id=tournament_id))
@@ -110,15 +121,24 @@ def join_tournament(tournament_id):
             if fetched_commander:
                 commander = fetched_commander
 
-        player = Player(
-            tournament_id=tournament_id,
-            name=name,
-            commander=commander if commander else None,
-            decklist_url=decklist_url if decklist_url else None,
-            user_id=current_user.id if current_user.is_authenticated else None
-        )
-        db.session.add(player)
-        db.session.commit()
+        if tournament.league_id:
+            from app.services.league_service import get_or_create_league_player, add_player_to_week
+            lp = get_or_create_league_player(tournament.league_id, name, tournament.week_number or 1)
+            player = add_player_to_week(lp, tournament, commander=commander or None,
+                                        decklist_url=decklist_url or None)
+            if current_user.is_authenticated:
+                player.user_id = current_user.id
+                db.session.commit()
+        else:
+            player = Player(
+                tournament_id=tournament_id,
+                name=name,
+                commander=commander if commander else None,
+                decklist_url=decklist_url if decklist_url else None,
+                user_id=current_user.id if current_user.is_authenticated else None
+            )
+            db.session.add(player)
+            db.session.commit()
 
         flash(f'Welcome, {name}! You\'re registered.', 'success')
         return redirect(url_for('player.join_tournament', tournament_id=tournament_id))

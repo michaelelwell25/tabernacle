@@ -150,6 +150,9 @@
       {% elif w.status == 'completed' %}
       <span class="badge badge-green">Completed</span>
       {% endif %}
+      {% if w.unlinked %}
+      <span class="badge badge-red">{{ w.unlinked }} unlinked</span>
+      {% endif %}
     </div>
     <div class="btn-group">
       {% if w.status == 'not_created' and league.status == 'active' %}
@@ -158,6 +161,9 @@
       </form>
       {% elif w.tournament %}
       <a href="{{ url_for('league.view_week', league_id=league.id, week_number=w.number) }}" class="btn btn-outline btn-sm">Dashboard</a>
+      {% if w.status in ('registration', 'active') or w.unlinked %}
+      <a href="{{ url_for('league.add_players', league_id=league.id, week_number=w.number) }}" class="btn btn-outline btn-sm">{% if w.unlinked %}Fix Links{% elif w.status == 'active' %}Add Late{% else %}Players{% endif %}</a>
+      {% endif %}
       {% if w.status == 'completed' %}
       <a href="{{ url_for('league.week_recap', league_id=league.id, week_number=w.number) }}" class="btn btn-outline btn-sm">Recap</a>
       {% endif %}

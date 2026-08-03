@@ -15,6 +15,9 @@
   {% if tournament.status != 'completed' %}
   <div class="btn-group">
     <a href="{{ url_for('player.register_player', tournament_id=tournament.id) }}" class="btn btn-primary">+ Register Player</a>
+    {% if tournament.league and tournament.status in ('registration', 'active') %}
+    <a href="{{ url_for('league.add_players', league_id=tournament.league.id, week_number=tournament.week_number) }}" class="btn btn-secondary">+ From League Roster</a>
+    {% endif %}
     <button class="btn btn-outline" onclick="document.getElementById('csvImport').classList.toggle('open')">Import CSV</button>
   </div>
   {% endif %}
